@@ -15,7 +15,7 @@
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  * 
  * @release     2025-08-20
- * @update      2025-10-17
+ * @update      2025-02-04
  * 
  * @product     P1002001 iQ DSMR (iQ DSMR Basic)
  * 
@@ -164,6 +164,9 @@ var DEVICE_SPECIFIC_REGISTERS = {
         VALUES: { "0x00" : "NONE", "0x01" : "ODD", "0x02" : "EVEN",}
     },
     "0xB3" : {SIZE: 4, NAME: "serialBaudRate"},
+    "0xB4" : {SIZE: 1, NAME: "dsmrProfile",
+        VALUES: { "0x00" : "NL", "0x01" : "LUX",}
+    },
     "0xD1" : {SIZE : 4, NAME : "pulseCounterDryInput1",},
     "0xD2" : {SIZE : 4, NAME : "pulseCounterDryInput2",},
     "0xDD" : {SIZE : 16, NAME : "decryptionKey", HEX:true},
@@ -174,15 +177,15 @@ var DEVICE_SPECIFIC_REGISTERS = {
     "0x10" : {SIZE : 2, NAME : "p1Version", DIGIT: false},
     "0x11" : {SIZE : 4, NAME : "telegramTimestamp",},
     "0x12" : {SIZE : 0, NAME : "equipmentIdentifier",},
-    "0x13" : {SIZE : 4, NAME : "electricityDeliveredToClient", UNIT : "Wh",},
+    "0x13" : {SIZE : 4, NAME : "electricityDeliveredToClient", UNIT : "Wh", ALIAS: "totalImportedActiveEnergy"},
     "0x14" : {SIZE : 4, NAME : "electricityDeliveredToClientT1", UNIT : "Wh",},
     "0x15" : {SIZE : 4, NAME : "electricityDeliveredToClientT2", UNIT : "Wh",},
-    "0x16" : {SIZE : 4, NAME : "electricityDeliveredByClient", UNIT : "Wh",},
+    "0x16" : {SIZE : 4, NAME : "electricityDeliveredByClient", UNIT : "Wh", ALIAS: "totalExportedActiveEnergy"},
     "0x17" : {SIZE : 4, NAME : "electricityDeliveredByClientT1", UNIT : "Wh",},
     "0x18" : {SIZE : 4, NAME : "electricityDeliveredByClientT2", UNIT : "Wh",},
     "0x19" : {SIZE : 2, NAME : "tariffIndicator",},
-    "0x1A" : {SIZE : 4, NAME : "electricityPowerDelivered", UNIT : "W", SIGNED : true,},
-    "0x1B" : {SIZE : 4, NAME : "electricityPowerReceived", UNIT : "W", SIGNED : true,},
+    "0x1A" : {SIZE : 4, NAME : "electricityPowerDelivered", UNIT : "W", SIGNED : true, ALIAS: "totalImportedActivePower"},
+    "0x1B" : {SIZE : 4, NAME : "electricityPowerReceived", UNIT : "W", SIGNED : true, ALIAS: "totalExportedActivePower"},
     "0x1C" : {SIZE : 4, NAME : "numberOfPowerFailures",},
     "0x1D" : {SIZE : 4, NAME : "numberOfLongPowerFailures",},
     "0x1E" : {SIZE : 0, NAME : "powerFailureEventLog", SINGLE_LOG_SIZE:8, LOG:true},
@@ -198,12 +201,12 @@ var DEVICE_SPECIFIC_REGISTERS = {
     "0x28" : {SIZE : 4, NAME : "currentL1", UNIT : "A", SIGNED : true,},
     "0x29" : {SIZE : 4, NAME : "currentL2", UNIT : "A", SIGNED : true,},
     "0x2A" : {SIZE : 4, NAME : "currentL3", UNIT : "A", SIGNED : true,},
-    "0x2B" : {SIZE : 4, NAME : "activePowerDeliveredL1", UNIT : "W", SIGNED : true,},
-    "0x2C" : {SIZE : 4, NAME : "activePowerDeliveredL2", UNIT : "W", SIGNED : true,},
-    "0x2D" : {SIZE : 4, NAME : "activePowerDeliveredL3", UNIT : "W", SIGNED : true,},
-    "0x2E" : {SIZE : 4, NAME : "activePowerReceivedL1", UNIT : "W", SIGNED : true,},
-    "0x2F" : {SIZE : 4, NAME : "activePowerReceivedL2", UNIT : "W", SIGNED : true,},
-    "0x30" : {SIZE : 4, NAME : "activePowerReceivedL3", UNIT : "W", SIGNED : true,},
+    "0x2B" : {SIZE : 4, NAME : "activePowerDeliveredL1", UNIT : "W", SIGNED : true, ALIAS: "importedActivePowerL1"},
+    "0x2C" : {SIZE : 4, NAME : "activePowerDeliveredL2", UNIT : "W", SIGNED : true, ALIAS: "importedActivePowerL2"},
+    "0x2D" : {SIZE : 4, NAME : "activePowerDeliveredL3", UNIT : "W", SIGNED : true, ALIAS: "importedActivePowerL3"},
+    "0x2E" : {SIZE : 4, NAME : "activePowerReceivedL1", UNIT : "W", SIGNED : true, ALIAS: "exportedActivePowerL1"},
+    "0x2F" : {SIZE : 4, NAME : "activePowerReceivedL2", UNIT : "W", SIGNED : true, ALIAS: "exportedActivePowerL2"},
+    "0x30" : {SIZE : 4, NAME : "activePowerReceivedL3", UNIT : "W", SIGNED : true, ALIAS: "exportedActivePowerL3"},
     "0x31" : {SIZE : 2, NAME : "deviceTypeOnChannel1",},
     "0x32" : {SIZE : 0, NAME : "equipmentIdentifierChannel1",},
     "0x33" : {SIZE : 8, NAME : "lastReadingOnChannel1",},
@@ -216,6 +219,27 @@ var DEVICE_SPECIFIC_REGISTERS = {
     "0x3A" : {SIZE : 2, NAME : "deviceTypeOnChannel4",},
     "0x3B" : {SIZE : 0, NAME : "equipmentIdentifierChannel4",},
     "0x3C" : {SIZE : 8, NAME : "lastReadingOnChannel4",},
+    "0x3D" : {SIZE : 4, NAME : "totalImportedReactiveEnergy", UNIT : "Wh",},
+    "0x3E" : {SIZE : 4, NAME : "totalExportedReactiveEnergy", UNIT : "Wh",},
+    "0x3F" : {SIZE : 4, NAME : "totalImportedReactivePower", UNIT : "VAR",},
+    "0x40" : {SIZE : 4, NAME : "totalExportedReactivePower", UNIT : "VAR",},
+    "0x41" : {SIZE : 4, NAME : "activeThreshold", UNIT: "kVA", RESOLUTION : 0.1},
+    "0x42" : {SIZE : 4, NAME : "maxImportedExportedCurrent", UNIT : "A", SIGNED : true,},
+    "0x43" : {SIZE : 4, NAME : "totalImportedApparentPower", UNIT : "VA",},
+    "0x44" : {SIZE : 4, NAME : "totalExportedApparentPower", UNIT : "VA",},
+    "0x45" : {SIZE : 1, NAME : "breakerControlState",},
+    "0x46" : {SIZE : 1, NAME : "relay1ControlState",},
+    "0x47" : {SIZE : 1, NAME : "relay2ControlState",},
+    "0x48": {SIZE : 4, NAME : "importedReactivePowerL1", UNIT : "VAR"},
+    "0x49": {SIZE : 4, NAME : "importedReactivePowerL2", UNIT : "VAR"},
+    "0x4A": {SIZE : 4, NAME : "importedReactivePowerL3", UNIT : "VAR"},
+    "0x4B": {SIZE : 4, NAME : "exportedReactivePowerL1", UNIT : "VAR"},
+    "0x4C": {SIZE : 4, NAME : "exportedReactivePowerL2", UNIT : "VAR"},
+    "0x4D": {SIZE : 4, NAME : "exportedReactivePowerL3", UNIT : "VAR"},
+    "0x4E": {SIZE : 1, NAME : "valvePositionGasChannel1",},
+    "0x4F": {SIZE : 1, NAME : "valvePositionGasChannel2",},
+    "0x50": {SIZE : 1, NAME : "valvePositionGasChannel3",},
+    "0x51": {SIZE : 1, NAME : "valvePositionGasChannel4",},
 };
 
 
@@ -252,6 +276,9 @@ function decodeGenericData(bytes)
         reg.INDEX = index;
         reg = decodeRegister(bytes, reg);
         decoded[reg.NAME] = reg.DATA;
+        if(reg.ALIAS){
+            decoded[reg.ALIAS] = reg.DATA;
+        }
         index = index + reg.DATA_SIZE;
     }
     return decoded;
@@ -298,6 +325,9 @@ function decodeDeviceData(bytes)
         reg.INDEX = index;
         reg = decodeRegister(bytes, reg);
         decoded[reg.NAME] = reg.DATA;
+        if(reg.ALIAS){
+            decoded[reg.ALIAS] = reg.DATA;
+        }
         index = index + reg.DATA_SIZE;
     }
     return decoded;
@@ -344,6 +374,9 @@ function decodeAlarmData(bytes)
         reg.INDEX = index;
         reg = decodeRegister(bytes, reg);
         decoded[reg.NAME] = reg.DATA;
+        if(reg.ALIAS){
+            decoded[reg.ALIAS] = reg.DATA;
+        }
         index = index + reg.DATA_SIZE;
     }
     return decoded;
@@ -398,6 +431,9 @@ function decodeHistoricData(bytes)
         reg = decodeRegister(bytes, reg);
         logItem.name = reg.NAME;
         logItem.data = reg.DATA;
+        if(reg.ALIAS){
+            logItem.alias = reg.ALIAS;
+        }
         logItem.ts = packageTimestamp - timestampDelta;
         index = index + reg.DATA_SIZE;
         listOfMeasurements.push(logItem);
@@ -444,6 +480,9 @@ function decodeParameterData(bytes)
         reg.INDEX = index;
         reg = decodeRegister(bytes, reg);
         decoded[reg.NAME] = reg.DATA;
+        if(reg.ALIAS){
+            decoded[reg.ALIAS] = reg.DATA;
+        }
         index = index + reg.DATA_SIZE;
     }
     return decoded;
@@ -522,6 +561,20 @@ function decodeRegister(bytes, reg)
         // Decode into STRING format
         data = getStringFromBytesBigEndianFormat(bytes, reg.INDEX, reg.DATA_SIZE);
         reg.DATA = data;
+        return reg;
+    }
+    
+    if(reg.NAME == "maxImportedExportedCurrent")
+    {
+        // Decode into 2xINT16 format
+        var decoded = {};
+        var val = getValueFromBytesBigEndianFormat(bytes, reg.INDEX, 2);
+        val = getSignedIntegerFromInteger(val, 2);
+        decoded.maxImportedCurrent = val;
+        val = getValueFromBytesBigEndianFormat(bytes, reg.INDEX+2, 2);
+        val = getSignedIntegerFromInteger(val, 2);
+        decoded.maxExportedCurrent = val;
+        reg.DATA = decoded;
         return reg;
     }
     // Decode into DECIMAL format
@@ -799,6 +852,7 @@ var DEVICE = {
         "serialDataWidth": {TYPE: 177, /* 0xB1 */ SIZE: 1, MIN: 5, MAX: 9, RW:"RW",},
         "serialParity": {TYPE: 178, /* 0xB2 */ SIZE: 1, MIN: 0, MAX: 2, RW:"RW",},
         "serialBaudRate": {TYPE: 179, /* 0xB3 */ SIZE: 4, MIN: 1200, MAX: 115200, RW:"RW",},
+        "dsmrProfile": {TYPE: 180, /* 0xB4 */ SIZE: 1, MIN: 0, MAX: 1, RW:"RW",},
         "decryptionKey": {TYPE: 221, /* 0xDD */ SIZE: 16, RW:"RW", HEX:true,},
         "decryptionFunction": {TYPE: 222, /* 0xDE */ SIZE: 1, MIN: 0, MAX: 1, RW:"RW",},
 
@@ -808,14 +862,18 @@ var DEVICE = {
         "telegramTimestamp": {TYPE: 17, /* 0x11 */ RW:"R",},
         "equipmentIdentifier": {TYPE: 18, /* 0x12 */ RW:"R",},
         "electricityDeliveredToClient": {TYPE: 19, /* 0x13 */ RW:"R", TH:true,},
+        "totalImportedActiveEnergy": {TYPE: 19, /* 0x13 */ RW:"R", TH:true, ALIAS:true,},
         "electricityDeliveredToClientT1": {TYPE: 20, /* 0x14 */ RW:"R", TH:true,},
         "electricityDeliveredToClientT2": {TYPE: 21, /* 0x15 */ RW:"R", TH:true,},
         "electricityDeliveredByClient": {TYPE: 22, /* 0x16 */ RW:"R", TH:true,},
+        "totalExportedActiveEnergy": {TYPE: 22, /* 0x16 */ RW:"R", TH:true, ALIAS:true,},
         "electricityDeliveredByClientT1": {TYPE: 23, /* 0x17 */ RW:"R", TH:true,},
         "electricityDeliveredByClientT2": {TYPE: 24, /* 0x18 */ RW:"R", TH:true,},
         "tariffIndicator": {TYPE: 25, /* 0x19 */ RW:"R",},
         "electricityPowerDelivered": {TYPE: 26, /* 0x1A */ RW:"R", TH:true,},
+        "totalImportedActivePower": {TYPE: 26, /* 0x1A */ RW:"R", TH:true, ALIAS:true,},
         "electricityPowerReceived": {TYPE: 27, /* 0x1B */ RW:"R", TH:true,},
+        "totalExportedActivePower": {TYPE: 27, /* 0x1B */ RW:"R", TH:true, ALIAS:true,},
         "numberOfPowerFailures": {TYPE: 28, /* 0x1C */ RW:"R",},
         "numberOfLongPowerFailures": {TYPE: 29, /* 0x1D */ RW:"R",},
         "powerFailureEventLog": {TYPE: 30, /* 0x1E */ RW:"R",},
@@ -832,11 +890,17 @@ var DEVICE = {
         "currentL2": {TYPE: 41, /* 0x29 */ RW:"R", TH:true,},
         "currentL3": {TYPE: 42, /* 0x2A */ RW:"R", TH:true,},
         "activePowerDeliveredL1": {TYPE: 43, /* 0x2B */ RW:"R", TH:true,},
+        "importedActivePowerL1": {TYPE: 43, /* 0x2B */ RW:"R", TH:true, ALIAS:true,},
         "activePowerDeliveredL2": {TYPE: 44, /* 0x2C */ RW:"R", TH:true,},
+        "importedActivePowerL2": {TYPE: 44, /* 0x2C */ RW:"R", TH:true, ALIAS:true,},
         "activePowerDeliveredL3": {TYPE: 45, /* 0x2D */ RW:"R", TH:true,},
+        "importedActivePowerL3": {TYPE: 45, /* 0x2D */ RW:"R", TH:true, ALIAS:true,},
         "activePowerReceivedL1": {TYPE: 46, /* 0x2E */ RW:"R", TH:true,},
+        "exportedActivePowerL1": {TYPE: 46, /* 0x2E */ RW:"R", TH:true, ALIAS:true,},
         "activePowerReceivedL2": {TYPE: 47, /* 0x2F */ RW:"R", TH:true,},
+        "exportedActivePowerL2": {TYPE: 47, /* 0x2F */ RW:"R", TH:true, ALIAS:true,},
         "activePowerReceivedL3": {TYPE: 48, /* 0x30 */ RW:"R", TH:true,},
+        "exportedActivePowerL3": {TYPE: 48, /* 0x30 */ RW:"R", TH:true, ALIAS:true,},
         "deviceTypeOnChannel1": {TYPE: 49, /* 0x31 */ RW:"R",},
         "equipmentIdentifierChannel1": {TYPE: 50, /* 0x32 */ RW:"R",},
         "lastReadingOnChannel1": {TYPE: 51, /* 0x33 */ RW:"R",},
@@ -849,6 +913,27 @@ var DEVICE = {
         "deviceTypeOnChannel4": {TYPE: 58, /* 0x3A */ RW:"R",},
         "equipmentIdentifierChannel4": {TYPE: 59, /* 0x3B */ RW:"R",},
         "lastReadingOnChannel4": {TYPE: 60, /* 0x3C */ RW:"R",},
+        "totalImportedReactiveEnergy": {TYPE: 61, /* 0x3D */ RW:"R",},
+        "totalExportedReactiveEnergy": {TYPE: 62, /* 0x3E */ RW:"R",},
+        "totalImportedReactivePower": {TYPE: 63, /* 0x3F */ RW:"R",},
+        "totalExportedReactivePower": {TYPE: 64, /* 0x40 */ RW:"R",},
+        "activeThreshold": {TYPE: 65, /* 0x41 */ RW:"R",},
+        "maxImportedExportedCurrent": {TYPE: 66, /* 0x42 */ RW:"R",},
+        "totalImportedApparentPower": {TYPE: 67, /* 0x43 */ RW:"R",},
+        "totalExportedApparentPower": {TYPE: 68, /* 0x44 */ RW:"R",},
+        "breakerControlState": {TYPE: 69, /* 0x45 */ RW:"R",},
+        "relay1ControlState": {TYPE: 70, /* 0x46 */ RW:"R",},
+        "relay2ControlState": {TYPE: 71, /* 0x47 */ RW:"R",},
+        "importedReactivePowerL1": {TYPE: 72, /* 0x48 */ RW:"R",},
+        "importedReactivePowerL2": {TYPE: 73, /* 0x49 */ RW:"R",},
+        "importedReactivePowerL3": {TYPE: 74, /* 0x4A */ RW:"R",},
+        "exportedReactivePowerL1": {TYPE: 75, /* 0x4B */ RW:"R",},
+        "exportedReactivePowerL2": {TYPE: 76, /* 0x4C */ RW:"R",},
+        "exportedReactivePowerL3": {TYPE: 77, /* 0x4D */ RW:"R",},
+        "valvePositionGasChannel1": {TYPE: 78, /* 0x4E */ RW:"R",},
+        "valvePositionGasChannel2": {TYPE: 79, /* 0x4F */ RW:"R",},
+        "valvePositionGasChannel3": {TYPE: 80, /* 0x50 */ RW:"R",},
+        "valvePositionGasChannel4": {TYPE: 81, /* 0x51 */ RW:"R",},
     },
     ERRORS : {
         CMD_INVALID: "Invalid command",
