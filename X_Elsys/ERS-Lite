@@ -1,0 +1,115 @@
+/*
+    ELSYS simple payload decoder. 
+
+    Optimized for Milesight IoT Cloud / Gateways.
+    Based on the original code by Elsys AB, available at https://www.elsys.se/support/decoders/ and adapted for use in Milesight Gateways by YOBIIQ.
+*/
+
+var TYPE_TEMP         = 0x01; //temp 2 bytes
+var TYPE_RH           = 0x02; //Humidity 1 byte
+var TYPE_ACC          = 0x03; //acceleration 3 bytes
+var TYPE_LIGHT        = 0x04; //Light 2 bytes
+var TYPE_MOTION       = 0x05; //Motion 1 byte
+var TYPE_CO2          = 0x06; //Co2 2 bytes
+var TYPE_VDD          = 0x07; //VDD 2byte
+var TYPE_ANALOG1      = 0x08; //Analog 2byte
+var TYPE_GPS          = 0x09; //GPS
+var TYPE_PULSE1       = 0x0A; //Pulse 2bytes
+var TYPE_PULSE1_ABS   = 0x0B; //Pulse 4bytes
+var TYPE_EXT_TEMP1    = 0x0C; //External temp
+var TYPE_EXT_DIGITAL  = 0x0D; //Digital 1byte
+var TYPE_EXT_DISTANCE = 0x0E; //Distance 2bytes
+var TYPE_ACC_MOTION   = 0x0F; //Acc motion 1byte
+var TYPE_IR_TEMP      = 0x10; //IR temp 4bytes
+var TYPE_OCCUPANCY    = 0x11; //Occupancy 1byte
+var TYPE_WATERLEAK    = 0x12; //Waterleak 1byte
+var TYPE_GRIDEYE      = 0x13; //Grideye 65bytes
+var TYPE_PRESSURE     = 0x14; //Pressure 4bytes
+var TYPE_SOUND        = 0x15; //Sound 2bytes
+var TYPE_PULSE2       = 0x16; //Pulse 2bytes
+var TYPE_PULSE2_ABS   = 0x17; //Pulse 4bytes
+var TYPE_ANALOG2      = 0x18; //Analog 2bytes
+var TYPE_EXT_TEMP2    = 0x19; //External temp 2bytes
+var TYPE_EXT_DIGITAL2 = 0x1A; //Digital 2 1byte
+var TYPE_EXT_ANALOG_UV= 0x1B; //Analog uV 4 bytes
+var TYPE_TVOC         = 0x1C; //TVOC 2 bytes
+
+function bin16dec(bin) {
+    var num = bin & 0xFFFF;
+    if (0x8000 & num) num = -(0x010000 - num);
+    return num;
+}
+
+function bin8dec(bin) {
+    var num = bin & 0xFF;
+    if (0x80 & num) num = -(0x0100 - num);
+    return num;
+}
+
+function DecodeElsysPayload(data) {
+    var obj = new Object();
+    for (var i = 0; i < data.length; i++) {
+        switch (data[i]) {
+            case TYPE_TEMP:
+                var temp = (data[i + 1] << 8) | (data[i + 2]);
+                obj.temperature = bin16dec(temp) / 10;
+                i += 2;
+                break;
+            case TYPE_RH:
+                obj.humidity = data[i + 1];
+                i += 1;
+                break;
+            case TYPE_ACC:
+                obj.x = bin8dec(data[i + 1]);
+                obj.y = bin8dec(data[i + 2]);
+                obj.z = bin8dec(data[i + 3]);
+                i += 3;
+                break;
+            case TYPE_LIGHT:
+                obj.light = (data[i + 1] << 8) | (data[i + 2]);
+                i += 2;
+                break;
+            case TYPE_MOTION:
+                obj.motion = data[i + 1];
+                i += 1;
+                break;
+            case TYPE_CO2:
+                obj.co2 = (data[i + 1] << 8) | (data[i + 2]);
+                i += 2;
+                break;
+            case TYPE_VDD:
+                obj.vdd = (data[i + 1] << 8) | (data[i + 2]);
+                i += 2;
+                break;
+            case TYPE_PULSE1:
+                obj.pulse1 = (data[i + 1] << 8) | (data[i + 2]);
+                i += 2;
+                break;
+            case TYPE_TVOC:
+                obj.tvoc = (data[i + 1] << 8) | (data[i + 2]);
+                i += 2;
+                break;
+            // Additional cases can be added here if needed for ERS Lite
+            default:
+                i = data.length; // Stop decoding if unknown byte
+                break;
+        }
+    }
+    return obj;
+}
+
+// Milesight / Chirpstack / TTN v3 Entry Point
+function decodeUplink(input) {
+    if (!input || !input.bytes) {
+        return { errors: ["Invalid input"] };
+    }
+    
+    return {
+        data: DecodeElsysPayload(input.bytes)
+    };
+}
+
+// Supporting the older TTN function call just in case
+function Decode(fPort, bytes) {
+    return DecodeElsysPayload(bytes);
+}
