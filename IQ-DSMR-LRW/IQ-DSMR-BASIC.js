@@ -15,7 +15,7 @@
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  * 
  * @release     2025-08-20
- * @update      2025-02-04
+ * @update      2026-05-13
  * 
  * @product     P1002001 iQ DSMR (iQ DSMR Basic)
  * 
@@ -209,13 +209,13 @@ var DEVICE_SPECIFIC_REGISTERS = {
     "0x30" : {SIZE : 4, NAME : "activePowerReceivedL3", UNIT : "W", SIGNED : true, ALIAS: "exportedActivePowerL3"},
     "0x31" : {SIZE : 2, NAME : "deviceTypeOnChannel1",},
     "0x32" : {SIZE : 0, NAME : "equipmentIdentifierChannel1",},
-    "0x33" : {SIZE : 8, NAME : "lastReadingOnChannel1",},
+    "0x33" : {SIZE : 8, NAME : "lastReadingOnChannel1", ALIAS: "gasDeliveredToClient"},
     "0x34" : {SIZE : 2, NAME : "deviceTypeOnChannel2",},
     "0x35" : {SIZE : 0, NAME : "equipmentIdentifierChannel2",},
-    "0x36" : {SIZE : 8, NAME : "lastReadingOnChannel2",},
+    "0x36" : {SIZE : 8, NAME : "lastReadingOnChannel2", ALIAS: "thermalEnergyDeliveredToClient"},
     "0x37" : {SIZE : 2, NAME : "deviceTypeOnChannel3",},
     "0x38" : {SIZE : 0, NAME : "equipmentIdentifierChannel3",},
-    "0x39" : {SIZE : 8, NAME : "lastReadingOnChannel3",},
+    "0x39" : {SIZE : 8, NAME : "lastReadingOnChannel3", ALIAS: "waterVolumeDeliveredToClient"},
     "0x3A" : {SIZE : 2, NAME : "deviceTypeOnChannel4",},
     "0x3B" : {SIZE : 0, NAME : "equipmentIdentifierChannel4",},
     "0x3C" : {SIZE : 8, NAME : "lastReadingOnChannel4",},
@@ -904,12 +904,15 @@ var DEVICE = {
         "deviceTypeOnChannel1": {TYPE: 49, /* 0x31 */ RW:"R",},
         "equipmentIdentifierChannel1": {TYPE: 50, /* 0x32 */ RW:"R",},
         "lastReadingOnChannel1": {TYPE: 51, /* 0x33 */ RW:"R",},
+        "gasDeliveredToClient": {TYPE: 51, /* 0x33 */ RW:"R", ALIAS:true,},
         "deviceTypeOnChannel2": {TYPE: 52, /* 0x34 */ RW:"R",},
         "equipmentIdentifierChannel2": {TYPE: 53, /* 0x35 */ RW:"R",},
         "lastReadingOnChannel2": {TYPE: 54, /* 0x36 */ RW:"R",},
+        "thermalEnergyDeliveredToClient": {TYPE: 54, /* 0x36 */ RW:"R", ALIAS:true,},
         "deviceTypeOnChannel3": {TYPE: 55, /* 0x37 */ RW:"R",},
         "equipmentIdentifierChannel3": {TYPE: 56, /* 0x38 */ RW:"R",},
         "lastReadingOnChannel3": {TYPE: 57, /* 0x39 */ RW:"R",},
+        "waterVolumeDeliveredToClient": {TYPE: 57, /* 0x39 */ RW:"R", ALIAS:true,},
         "deviceTypeOnChannel4": {TYPE: 58, /* 0x3A */ RW:"R",},
         "equipmentIdentifierChannel4": {TYPE: 59, /* 0x3B */ RW:"R",},
         "lastReadingOnChannel4": {TYPE: 60, /* 0x3C */ RW:"R",},
