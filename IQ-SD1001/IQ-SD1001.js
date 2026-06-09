@@ -10,7 +10,7 @@
  * YOBIIQ JS payload decoder compatible with TTN v3/v4 payload formatter and ChirpStack payload codec.
  * 
  * @author      Fostin Kpodar <f.kpodar@yobiiq.com>
- * @version     1.2.0
+ * @version     1.2.1
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  * 
  * @release     06/12/2023
