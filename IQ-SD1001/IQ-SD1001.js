@@ -10,15 +10,15 @@
  * YOBIIQ JS payload decoder compatible with TTN v3/v4 payload formatter and ChirpStack payload codec.
  * 
  * @author      Fostin Kpodar <f.kpodar@yobiiq.com>
- * @version     1.1.0
+ * @version     1.2.0
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  * 
  * @release     06/12/2023
- * @update      10/30/2024
+ * @update      06/09/2026
  * 
  * @author      Dominic Hakke <d.hakke@yobiiq.com>
  * // Changes in header of document, naming conventions changed.
- * 
+ * // Added support for temperature and humidity readings.
  *
  * @product     P1002015 iQ SD-1001 (Smoke Detector)
  * 
@@ -27,7 +27,7 @@
 
 // Version Control
 var VERSION_CONTROL = {
-    CODEC : {VERSION: "1.1.0", NAME: "codecVersion"},
+    CODEC : {VERSION: "1.2.1", NAME: "codecVersion"},
     DEVICE: {MODEL : "SD-1001", NAME: "deviceModel"},
     PRODUCT: {CODE : "1002015", NAME: "productCode"},
     MANUFACTURER: {COMPANY : "YOBIIQ B.V.", NAME: "manufacturer"},
@@ -113,7 +113,6 @@ function isBasicInformation(bytes, fPort)
     {
         return true;
     }
-    // Example: ff090100 ff0a0102 ff162404152795 ff0f02 ff0b01
     if(bytes[0] == CONFIG_INFO.CHANNEL &&
         bytes[4] == CONFIG_INFO.CHANNEL &&
         bytes[8] == CONFIG_INFO.CHANNEL
@@ -167,24 +166,20 @@ function decodeBasicInformation(bytes)
                 {
                     if(info.DIGIT == false)
                     {
-                        // Decode into "V" + DIGIT STRING + "." DIGIT STRING format
                         value = getDigitStringArrayNoFormat(bytes, index, size);
                         value = "V" + value[0] + "." + value[1];
                     }else
                     {
-                        // Decode into DIGIT STRING format
                         value = getDigitStringArrayEvenFormat(bytes, index, size).join("");
                         value = parseInt(value, 10);
                     }
                 }
                 else if("VALUES" in info)
                 {
-                    // Decode into HEX STRING (VALUES specified in CONFIG_INFO)
                     value = "0x" + toEvenHEX(bytes[index].toString(16).toUpperCase());
                     value = info.VALUES[value];
                 }else
                 {
-                    // Decode into DECIMAL format
                     value = getValueFromBytesBigEndianFormat(bytes, index, size);
                 }
                 decoded[info.NAME] = value;
@@ -226,24 +221,102 @@ function decodeDeviceData(bytes)
             // Channel of device data
             channel = "0x" + toEvenHEX(bytes[index].toString(16).toUpperCase());
             index = index + 1;
+            
+            if (index >= LENGTH) break;
+
             // Type of device data
             type = bytes[index];
             index = index + 1;
 
-            // No type checking
+            // Handle new Temperature and Humidity payload formats (Channel 0x80)
+            if (channel === "0x80") {
+                var typeHex = "0x" + toEvenHEX(type.toString(16).toUpperCase());
+                
+                if (typeHex === "0xA0") {
+                    // Temperature datalog (Max 24 historical values, 2 bytes each = 48 bytes max)
+                    var tempArray = [];
+                    var tempEnd = Math.min(LENGTH, index + 48);
+                    while (index + 1 < tempEnd) {
+                        var rawTemp = getValueFromBytesBigEndianFormat(bytes, index, 2);
+                        var tempVal = parseFloat((rawTemp * 0.1 - 30).toFixed(1));
+                        tempArray.push(tempVal);
+                        index += 2;
+                    }
+                    if (tempArray.length > 0) {
+                        decoded["temperatureDatalog"] = tempArray;
+                        decoded["temperature"] = tempArray[tempArray.length - 1]; // Current value
+                    }
+                } 
+                else if (typeHex === "0xA1") {
+                    // Humidity datalog (Max 24 historical values, 1 byte each = 24 bytes max)
+                    var humiArray = [];
+                    var humiEnd = Math.min(LENGTH, index + 24);
+                    while (index < humiEnd) {
+                        var rawHumi = bytes[index];
+                        humiArray.push(rawHumi);
+                        index += 1;
+                    }
+                    if (humiArray.length > 0) {
+                        decoded["humidityDatalog"] = humiArray;
+                        decoded["humidity"] = humiArray[humiArray.length - 1]; // Current value
+                    }
+                } 
+                else if (typeHex === "0xA2") {
+                    // Daily air quality (9 bytes total structure)
+                    if (index + 9 <= LENGTH) {
+                        var rawMaxTemp = getValueFromBytesBigEndianFormat(bytes, index, 2);
+                        var rawMinTemp = getValueFromBytesBigEndianFormat(bytes, index + 2, 2);
+                        var rawAvgTemp = getValueFromBytesBigEndianFormat(bytes, index + 4, 2);
+                        
+                        decoded["dailyMaxTemperature"] = parseFloat((rawMaxTemp * 0.1 - 30).toFixed(1));
+                        decoded["dailyMinTemperature"] = parseFloat((rawMinTemp * 0.1 - 30).toFixed(1));
+                        decoded["dailyAvgTemperature"] = parseFloat((rawAvgTemp * 0.1 - 30).toFixed(1));
+                        
+                        decoded["dailyMaxHumidity"] = bytes[index + 6];
+                        decoded["dailyMinHumidity"] = bytes[index + 7];
+                        decoded["dailyAvgHumidity"] = bytes[index + 8];
+                        
+                        index += 9;
+                    } else {
+                        throw new Error("Invalid payload length for daily air quality data structure");
+                    }
+                }
+                continue;
+            }
 
-            var config = CONFIG_DATA.CHANNELS[channel]
+            var config = CONFIG_DATA.CHANNELS[channel];
+            
+            // Defensive parsing for unmapped/system configuration echoes (like 0xFF 0x03)
+            if (!config) {
+                if (channel === "0xFF") {
+                    var sysTypeHex = "0x" + toEvenHEX(type.toString(16).toUpperCase());
+                    var sysInfo = CONFIG_INFO.TYPES[sysTypeHex];
+                    
+                    var sysSize = null;
+                    if (sysTypeHex === "0x03") sysSize = 2; // reportingInterval
+                    else if (sysTypeHex === "0x00") sysSize = 1; // smokeDetector
+                    else if (sysTypeHex === "0x0A") sysSize = 2; // silenceBuzzer
+                    else if (sysTypeHex === "0x01") sysSize = 1; // confirmedUplink
+                    
+                    size = sysInfo ? sysInfo.SIZE : sysSize;
+                    if (size !== null && size !== undefined) {
+                        index = index + size;
+                        continue;
+                    }
+                }
+                // Stop processing unknown byte signatures entirely to avoid infinite loops
+                break;
+            }
+
             size = config.SIZE;
             // Decoding
             var value = 0;
             if("VALUES" in config)
             {
-                // Decode into STRING (VALUES specified in CONFIG_DATA)
                 value = "0x" + toEvenHEX(bytes[index].toString(16).toUpperCase());
                 value = config.VALUES[value];
             }else
             {
-                // Decode into DECIMAL format
                 value = getValueFromBytesBigEndianFormat(bytes, index, size);
             }
             decoded[config.NAME] = value;
@@ -309,11 +382,6 @@ function toEvenHEX(hex)
 
 /************************************************************************************************************/
 
-// Decode decodes an array of bytes into an object. (ChirpStack v3)
-//  - fPort contains the LoRaWAN fPort number
-//  - bytes is an array of bytes, e.g. [225, 230, 255, 0]
-//  - variables contains the device variables e.g. {"calibration": "3.5"} (both the key / value are of type string)
-// The function must return an object, e.g. {"temperature": 22.5}
 function Decode(fPort, bytes, variables) 
 {
     var decoded = {};
@@ -331,15 +399,6 @@ function Decode(fPort, bytes, variables)
     return decoded;
 }
 
-// Decode uplink function. (ChirpStack v4 , TTN)
-//
-// Input is an object with the following fields:
-// - bytes = Byte array containing the uplink payload, e.g. [255, 230, 255, 0]
-// - fPort = Uplink fPort.
-// - variables = Object containing the configured device variables.
-//
-// Output must be an object with the following fields:
-// - data = Object representing the decoded payload.
 function decodeUplink(input) {
     return {
         data: Decode(input.fPort, input.bytes, input.variables)
@@ -348,11 +407,6 @@ function decodeUplink(input) {
 
 /************************************************************************************************************/
 
-// Encode encodes the given object into an array of bytes. (ChirpStack v3)
-//  - fPort contains the LoRaWAN fPort number
-//  - obj is an object, e.g. {"temperature": 22.5}
-//  - variables contains the device variables e.g. {"calibration": "3.5"} (both the key / value are of type string)
-// The function must return an array of bytes, e.g. [225, 230, 255, 0]
 function Encode(fPort, obj, variables) {
     try
     {
@@ -367,20 +421,11 @@ function Encode(fPort, obj, variables) {
     return [];
 }
 
-// Encode downlink function. (ChirpStack v4 , TTN)
-//
-// Input is an object with the following fields:
-// - data = Object representing the payload that must be encoded.
-// - variables = Object containing the configured device variables.
-//
-// Output must be an object with the following fields:
-// - bytes = Byte array containing the downlink payload.
 function encodeDownlink(input) {
     return {
         bytes: Encode(null, input.data, input.variables)
     };
 }
-
 
 /************************************************************************************************************/
 
@@ -442,12 +487,10 @@ function encodeDeviceConfiguration(obj, variables)
             }
         }else
         {
-            // Error
             return [];
         }
     }catch(error)
     {
-        // Error
         return [];
     }
     return encoded;
