@@ -1,0 +1,330 @@
+1. Restart the LoRaWAN Interface (send over fPort 50)
+
+{
+    "fPort" : 50,
+    "Type" : "Config",
+    "Config" : [{
+        "Param" : "restartLoRaWAN",
+        "Value" : 1
+    }]
+}
+
+
+2. To configure ADR and SF (2 parameters)
+
+{
+    "fPort" : 50,
+    "Type": "Config",
+    "Config": [{
+        "Param": "adr",
+        "Value": 0
+    }, {
+        "Param": "sf",
+        "Value": 3
+    }]
+}
+
+
+3. Read device registers (send over fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "adr", "sf", "adrProfile", 
+        "radioMode", "numberOfJoinAttempts",
+        "linkCheckTimeframe", "dataRetransmission",
+        "lorawanWatchdogAlarm",
+    ]
+}
+
+Note : Please limit to 10 registers per Reading
+See list of registers below
+
+
+4. Configure 15 min periodic unconfirmed uplink
+
+{
+    "fPort" : 2,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 15,
+        "Mode": 1,
+        "Status": 1,
+        "Registers": ["voltageL1N", "currentL1", "activePowerL1", "frequency", "powerFactorL1", "phaseAngleL1"]
+    }
+}
+
+Note : Please limit to 10 registers per fPort (fPort between 1 to 10)
+- UplinkInterval : uplink interval in minutes (always greater than 0)
+- Mode : 0 => unconfirmed uplink; 1 => confirmed uplink
+- Status : 0 => fPort disabled; 1 => fPort enabled
+- Registers : list of registers
+
+******************  List of registers ********************
+buildingName
+buildingRoom
+deviceName
+deviceStatus
+manufacturer
+originalEquipmentManufacturer
+deviceModel
+deviceSerialNumber
+firmwareVersion
+hardwareVersion
+externalPowerStatus
+batteryVoltage
+batteryPercentage
+internalCircuitTemperatureAlarm
+internalCircuitTemperatureNumberOfAlarms
+internalCircuitTemperature
+internalCircuitHumidity
+ambientTemperature
+ambientHumidity
+joinStatus
+applicationPort
+joinType
+deviceClass
+adr
+sf
+adrProfile
+radioMode
+numberOfJoinAttempts
+linkCheckTimeframe
+dataRetransmission
+lorawanWatchdogAlarm
+electricalCabinet
+electricalGroup
+serialWatchdogAlarm
+serialModbusSlaveId
+serialStopBits
+serialParity
+serialDataWidth
+serialBaudRate
+serialModbusExecutionInterval
+serialModbusResponseTimeout
+serialModbusMaxRetries
+frequency
+phaseSequence
+voltageAvgLN
+voltageL1N
+voltageL2N
+voltageL3N
+voltageL1L2
+voltageL2L3
+voltageL3L1
+voltageAvgLL
+voltageThdL1
+voltageThdL2
+voltageThdL3
+currentTotal
+currentL1
+currentL2
+currentL3
+currentNeutral
+currentThdL1
+currentThdL2
+currentThdL3
+currentAvg
+currentAvgL1
+currentAvgL2
+currentAvgL3
+currentDemandTotal
+currentDemandL1
+currentDemandL2
+currentDemandL3
+currentMaxDemandTotal
+currentMaxDemandL1
+currentMaxDemandL2
+currentMaxDemandL3
+activePowerTotal
+activePowerL1
+activePowerL2
+activePowerL3
+activePowerImportDemand
+activePowerExportDemand
+activePowerImportMaxDemand
+activePowerExportMaxDemand
+reactivePowerTotal
+reactivePowerL1
+reactivePowerL2
+reactivePowerL3
+reactivePowerImportDemand
+reactivePowerExportDemand
+reactivePowerImportMaxDemand
+reactivePowerExportMaxDemand
+apparentPowerTotal
+apparentPowerL1
+apparentPowerL2
+apparentPowerL3
+apparentPowerDemand
+apparentPowerMaxDemand
+phaseAngleL1
+phaseAngleL2
+phaseAngleL3
+cosPhiL1
+cosPhiL2
+cosPhiL3
+powerFactorSystem
+powerFactorL1
+powerFactorL2
+powerFactorL3
+importActiveEnergySystem
+importActiveEnergyL1
+importActiveEnergyL2
+importActiveEnergyL3
+importActiveEnergySystemT1
+importActiveEnergyL1T1
+importActiveEnergyL2T1
+importActiveEnergyL3T1
+importActiveEnergySystemT2
+importActiveEnergyL1T2
+importActiveEnergyL2T2
+importActiveEnergyL3T2
+importActiveEnergySystemT3
+importActiveEnergyL1T3
+importActiveEnergyL2T3
+importActiveEnergyL3T3
+importActiveEnergySystemT4
+importActiveEnergyL1T4
+importActiveEnergyL2T4
+importActiveEnergyL3T4
+importActiveEnergySystemPartial
+importActiveEnergyL1Partial
+importActiveEnergyL2Partial
+importActiveEnergyL3Partial
+exportActiveEnergySystem
+exportActiveEnergyL1
+exportActiveEnergyL2
+exportActiveEnergyL3
+exportActiveEnergySystemT1
+exportActiveEnergyL1T1
+exportActiveEnergyL2T1
+exportActiveEnergyL3T1
+exportActiveEnergySystemT2
+exportActiveEnergyL1T2
+exportActiveEnergyL2T2
+exportActiveEnergyL3T2
+exportActiveEnergySystemT3
+exportActiveEnergyL1T3
+exportActiveEnergyL2T3
+exportActiveEnergyL3T3
+exportActiveEnergySystemT4
+exportActiveEnergyL1T4
+exportActiveEnergyL2T4
+exportActiveEnergyL3T4
+exportActiveEnergySystemPartial
+exportActiveEnergyL1Partial
+exportActiveEnergyL2Partial
+exportActiveEnergyL3Partial
+importReactiveEnergySystem
+importReactiveEnergyL1
+importReactiveEnergyL2
+importReactiveEnergyL3
+importReactiveEnergySystemT1
+importReactiveEnergyL1T1
+importReactiveEnergyL2T1
+importReactiveEnergyL3T1
+importReactiveEnergySystemT2
+importReactiveEnergyL1T2
+importReactiveEnergyL2T2
+importReactiveEnergyL3T2
+importReactiveEnergySystemT3
+importReactiveEnergyL1T3
+importReactiveEnergyL2T3
+importReactiveEnergyL3T3
+importReactiveEnergySystemT4
+importReactiveEnergyL1T4
+importReactiveEnergyL2T4
+importReactiveEnergyL3T4
+importReactiveEnergySystemPartial
+importReactiveEnergyL1Partial
+importReactiveEnergyL2Partial
+importReactiveEnergyL3Partial
+exportReactiveEnergySystem
+exportReactiveEnergyL1
+exportReactiveEnergyL2
+exportReactiveEnergyL3
+exportReactiveEnergySystemT1
+exportReactiveEnergyL1T1
+exportReactiveEnergyL2T1
+exportReactiveEnergyL3T1
+exportReactiveEnergySystemT2
+exportReactiveEnergyL1T2
+exportReactiveEnergyL2T2
+exportReactiveEnergyL3T2
+exportReactiveEnergySystemT3
+exportReactiveEnergyL1T3
+exportReactiveEnergyL2T3
+exportReactiveEnergyL3T3
+exportReactiveEnergySystemT4
+exportReactiveEnergyL1T4
+exportReactiveEnergyL2T4
+exportReactiveEnergyL3T4
+exportReactiveEnergySystemPartial
+exportReactiveEnergyL1Partial
+exportReactiveEnergyL2Partial
+exportReactiveEnergyL3Partial
+activeEnergyBalanceSystem
+activeEnergyBalanceL1
+activeEnergyBalanceL2
+activeEnergyBalanceL3
+reactiveEnergyBalanceSystem
+reactiveEnergyBalanceL1
+reactiveEnergyBalanceL2
+reactiveEnergyBalanceL3
+reactiveEnergyZone1System
+reactiveEnergyZone1L1
+reactiveEnergyZone1L2
+reactiveEnergyZone1L3
+reactiveEnergyZone1SystemT1
+reactiveEnergyZone1L1T1
+reactiveEnergyZone1L2T1
+reactiveEnergyZone1L3T1
+reactiveEnergyZone1SystemT2
+reactiveEnergyZone1L1T2
+reactiveEnergyZone1L2T2
+reactiveEnergyZone1L3T2
+reactiveEnergyZone2System
+reactiveEnergyZone2L1
+reactiveEnergyZone2L2
+reactiveEnergyZone2L3
+reactiveEnergyZone2SystemT1
+reactiveEnergyZone2L1T1
+reactiveEnergyZone2L2T1
+reactiveEnergyZone2L3T1
+reactiveEnergyZone2SystemT2
+reactiveEnergyZone2L1T2
+reactiveEnergyZone2L2T2
+reactiveEnergyZone2L3T2
+reactiveEnergyZone3System
+reactiveEnergyZone3L1
+reactiveEnergyZone3L2
+reactiveEnergyZone3L3
+reactiveEnergyZone3SystemT1
+reactiveEnergyZone3L1T1
+reactiveEnergyZone3L2T1
+reactiveEnergyZone3L3T1
+reactiveEnergyZone3SystemT2
+reactiveEnergyZone3L1T2
+reactiveEnergyZone3L2T2
+reactiveEnergyZone3L3T2
+reactiveEnergyZone4System
+reactiveEnergyZone4L1
+reactiveEnergyZone4L2
+reactiveEnergyZone4L3
+reactiveEnergyZone4SystemT1
+reactiveEnergyZone4L1T1
+reactiveEnergyZone4L2T1
+reactiveEnergyZone4L3T1
+reactiveEnergyZone4SystemT2
+reactiveEnergyZone4L1T2
+reactiveEnergyZone4L2T2
+reactiveEnergyZone4L3T2
+digitalInputFlags
+digitalInput1Counter
+digitalInput1OnTime
+digitalInput2Counter
+digitalInput2OnTime
+diagnosticAlarms
+diagnosticErrorFlags
