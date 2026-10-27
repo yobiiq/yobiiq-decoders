@@ -1,0 +1,5 @@
+# Commits ignored by git blame (GitHub ignores them in its blame view).
+# Local use: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# normalize line endings to LF
+7290ec5ca7de757597ddf3c8b51566f33bdb1823
