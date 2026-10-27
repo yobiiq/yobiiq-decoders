@@ -1,2 +1,6 @@
+# Text files use LF line endings in the repository and in every checkout.
+* text=auto eol=lf
+
+# Firmware images and packages are never converted.
 *.bin binary
 *.zip binary
