@@ -17,11 +17,11 @@
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  *
  * @release     24-09-2026
- * @update      02-10-2026
+ * @update      27-10-2026
  *
- * @product     IQ AIM (Analog Input Module: 4 inputs, 0-10 V or 4-20 mA)
+ * @product     IQ CMD (CMD series analog input module, CMD-L-0D-4I: 4 inputs, 0-10 V or 4-20 mA)
  *
- * @firmware    IQ AIM v1.0.0
+ * @firmware    IQ CMD v1.0.0
  *
  */
 
@@ -29,7 +29,7 @@
 // Added to every decoded uplink, without overwriting decoded fields.
 var CODEC_INFO = {
     codecVersion: "1.0.0",
-    genericModel: "IQ AIM",
+    genericModel: "IQ CMD",
     manufacturer: "YOBIIQ B.V."
 };
 
@@ -493,7 +493,7 @@ function writeUint(out, value, size) {
 /************************************************************************************************************/
 
 /*
- * Commands (see IQ-AIM.txt for examples):
+ * Commands (see IQ-CMD.txt for examples):
  *   {"fPort": 50, "Type": "Config", "Config": [{"Param": "adr", "Value": 1}]}
  *   {"fPort": 100, "Type": "Reading", "Reading": ["adr", "sf"]}
  *   {"fPort": 1-10, "Type": "Periodic", "Periodic": {"UplinkInterval": 15, "Mode": 0, "Status": 1,

@@ -6,13 +6,13 @@ Codec for the CMD series analog input modules with LoRaWAN (CMD-L-0D-4I: 4 input
 
 File | Content
 ---|---
-[IQ-AIM.js](IQ-AIM.js) | Codec, version 1.0.0
-[IQ-AIM.txt](IQ-AIM.txt) | Downlink examples
+[IQ-CMD.js](IQ-CMD.js) | Codec, version 1.0.0
+[IQ-CMD.txt](IQ-CMD.txt) | Downlink examples
 `firmware/` | Signed firmware images for over-the-air updates
 
 ## Codec
 
-- Version **1.0.0**, written for the CMD (AIM) firmware **v1.0.0**. The codec version follows the firmware version.
+- Version **1.0.0**, written for the CMD firmware **v1.0.0**. The codec version follows the firmware version.
 - Entry points: `decodeUplink` and `encodeDownlink` (LoRa Alliance TS013-1.0.0) for The Things Stack, ChirpStack v4, LORIOT, ThingPark; `Decode` and `Encode` for ChirpStack v3.
 - Written in ES3 syntax without ES5+ library calls, so it runs on every network server engine, including the ChirpStack v3 one.
 - Every decoded uplink also carries the codec information: `codecVersion`, `genericModel`, `manufacturer` (and `productCode` where the product has one).
@@ -40,7 +40,7 @@ fPort | `Type` | Content
 50 | `Config` | Register writes (configuration and commands)
 100 | `Reading` | Register reads, answered on fPort 100
 
-[IQ-AIM.txt](IQ-AIM.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
+[IQ-CMD.txt](IQ-CMD.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
 
 ## Firmware OTA package
 
@@ -49,7 +49,7 @@ Each released firmware version has its own folder:
 ```
 firmware/
   v<x.y.z>/
-    IQ-AIM_v<x.y.z>.bin   signed firmware image for LoRaWAN FUOTA
+    IQ-CMD_v<x.y.z>.bin   signed firmware image for LoRaWAN FUOTA
     SHA256SUMS            SHA-256 checksums of the images
     CHANGELOG.md          changes of this version
 ```

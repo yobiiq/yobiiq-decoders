@@ -34,7 +34,7 @@ Device | Models | Codec folder | Technical Reference Manual
 DEM electricity meter | DEM1, DEM2, DEM4 | [SDK/IQ-DEM](SDK/IQ-DEM) | [DEM1](https://yobiiq.com/documentation/technical-guides/dem1-technical-reference-manual), [DEM2](https://yobiiq.com/documentation/technical-guides/dem2-technical-reference-manual), [DEM4](https://yobiiq.com/documentation/technical-guides/dem4-technical-reference-manual)
 PEM smart 3-phase electricity meter | PEM431 | [SDK/IQ-PEM](SDK/IQ-PEM) | [PEM431](https://yobiiq.com/documentation/technical-guides/pem431-technical-reference-manual)
 RCM relay controller | RCM series | [SDK/IQ-RCM](SDK/IQ-RCM) | [RCM](https://yobiiq.com/documentation/technical-guides/rcm-technical-reference-manual)
-CMD analog input module (4 inputs, 0-10 V or 4-20 mA) | CMD series (CMD-L-0D-4I) | [SDK/IQ-AIM](SDK/IQ-AIM) | [CMD](https://yobiiq.com/documentation/technical-guides/cmd-technical-reference-manual)
+CMD analog input module (4 inputs, 0-10 V or 4-20 mA) | CMD series (CMD-L-0D-4I) | [SDK/IQ-CMD](SDK/IQ-CMD) | [CMD](https://yobiiq.com/documentation/technical-guides/cmd-technical-reference-manual)
 DSMR P1 port smart meter reader | DSMR 4/5 (NL), Smarty (LUX), DSMR 2.2/3.0 (NL legacy) | [SDK/IQ-DSMR](SDK/IQ-DSMR) | -
 UWM ultrasonic water meter, UGM gas meter | UWM series, UGM series | [SDK/IQ-UGWM](SDK/IQ-UGWM) | [UWM](https://yobiiq.com/documentation/technical-guides/uwm-technical-reference-manual), [UGM](https://yobiiq.com/documentation/technical-guides/ugm-technical-reference-manual)
 Any current generation device (generic registers only) | all of the above | [SDK/IQ-GENERIC](SDK/IQ-GENERIC) | [LoRaWAN stack guide](https://yobiiq.com/documentation/technical-guides/iq-lorawan-stack)
