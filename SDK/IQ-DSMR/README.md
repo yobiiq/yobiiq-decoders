@@ -49,13 +49,13 @@ Each released firmware version has its own folder:
 ```
 firmware/
   v<x.y.z>/
-    IQ-DSMR_v<x.y.z>.bin    signed firmware image for LoRaWAN FUOTA
-    SHA256SUMS              SHA-256 checksum of the image
-    CHANGELOG.md            changes of this version
+    IQ-DSMR_v<x.y.z>.bin   signed firmware image for LoRaWAN FUOTA
+    SHA256SUMS             SHA-256 checksums of the images
+    CHANGELOG.md           changes of this version
 ```
 
 - Send the signed `.bin` image to the devices with the LoRa Alliance FUOTA packages, see [FUOTA deployment with ChirpStack](https://yobiiq.com/documentation/technical-guides/fuota-deployment-chirpstack). The device checks the signature of the image before it installs it.
-- Check the image before sending it: `sha256sum -c SHA256SUMS` in its folder.
+- Check the images before sending them: `sha256sum -c SHA256SUMS` in the version folder.
 - Use the codec of the same version as the firmware: after an update, update the codec in the network server too.
 
 Firmware | Codec | Image

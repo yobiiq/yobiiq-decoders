@@ -44,20 +44,27 @@ fPort | `Type` | Content
 
 ## Firmware OTA package
 
-Each released firmware version has its own folder:
+The firmware is built once per variant: every released version has one signed image per variant, all in the folder of that version.
+
+Variant | Devices | Image
+---|---|---
+UWM | UWM ultrasonic water meters | `IQ-UWM_v<x.y.z>.bin`
+UGM | UGM gas meters | `IQ-UGM_v<x.y.z>.bin`
 
 ```
 firmware/
   v<x.y.z>/
-    IQ-UGWM_v<x.y.z>.bin    signed firmware image for LoRaWAN FUOTA
-    SHA256SUMS              SHA-256 checksum of the image
-    CHANGELOG.md            changes of this version
+    IQ-UWM_v<x.y.z>.bin   signed firmware image for LoRaWAN FUOTA
+    IQ-UGM_v<x.y.z>.bin   signed firmware image for LoRaWAN FUOTA
+    SHA256SUMS            SHA-256 checksums of the images
+    CHANGELOG.md          changes of this version
 ```
 
 - Send the signed `.bin` image to the devices with the LoRa Alliance FUOTA packages, see [FUOTA deployment with ChirpStack](https://yobiiq.com/documentation/technical-guides/fuota-deployment-chirpstack). The device checks the signature of the image before it installs it.
-- Check the image before sending it: `sha256sum -c SHA256SUMS` in its folder.
-- Use the codec of the same version as the firmware: after an update, update the codec in the network server too.
+- Send each device the image of its own variant only. All variants are signed with the same key, so the signature check does not tell them apart: group the devices of one variant in their own multicast session.
+- Check the images before sending them: `sha256sum -c SHA256SUMS` in the version folder.
+- Use the codec of the same version as the firmware: after an update, update the codec in the network server too. One codec decodes every variant.
 
-Firmware | Codec | Image
----|---|---
-v1.0.0 | 1.0.0 | Not published yet
+Firmware | Codec | UWM | UGM
+---|---|---|---
+v1.0.0 | 1.0.0 | Not published yet | Not published yet

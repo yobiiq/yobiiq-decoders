@@ -19,7 +19,7 @@ SDK/                     current generation devices: one folder per product
     IQ-<NAME>.js         codec for the current firmware
     IQ-<NAME>.txt        downlink examples
     README.md            codec and firmware description
-    firmware/v<x.y.z>/   signed firmware images for over-the-air updates
+    firmware/v<x.y.z>/   signed firmware images for over-the-air updates, one per variant
 IQ-<NAME>/               previous generation devices: codec and downlink examples
 ```
 
@@ -68,7 +68,9 @@ EM2101 | LoRaWAN 1-phase electricity meter with built-in relay | [IQ-EM2101](IQ-
 ## Firmware updates over the air
 
 Current generation devices are updated with the signed firmware image (`.bin`) stored in
-`SDK/IQ-<NAME>/firmware/v<x.y.z>/`, sent with the LoRa Alliance FUOTA packages. The procedure for
+`SDK/IQ-<NAME>/firmware/v<x.y.z>/`, sent with the LoRa Alliance FUOTA packages. Products built in
+variants have one image per variant in that folder (DEM: `IQ-DEM1`, `IQ-DEM2`, `IQ-DEM4`; UGWM:
+`IQ-UWM`, `IQ-UGM`): send each device the image of its own variant, see the folder README. The procedure for
 ChirpStack is described in the
 [FUOTA deployment with ChirpStack](https://yobiiq.com/documentation/technical-guides/fuota-deployment-chirpstack)
 guide. Check the image against the `SHA256SUMS` file of its folder before sending it.
