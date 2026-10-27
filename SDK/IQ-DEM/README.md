@@ -8,6 +8,7 @@ File | Content
 ---|---
 [IQ-DEM.js](IQ-DEM.js) | Codec, version 1.2.0
 [IQ-DEM.txt](IQ-DEM.txt) | Downlink examples
+[IQ-DEM.examples.json](IQ-DEM.examples.json) | Payload examples: uplinks with their decoded output, downlinks with their bytes
 `firmware/` | Signed firmware images for over-the-air updates
 
 ## Codec
@@ -42,7 +43,9 @@ fPort | `Type` | Content
 100 | `Reading` | Register reads, answered on fPort 100
 11 | `MaxDemand` | Max demand logging configuration
 
-[IQ-DEM.txt](IQ-DEM.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
+[IQ-DEM.txt](IQ-DEM.txt) lists ready to use commands: the JSON object to pass to the encoder, with notes on the parameters.
+
+[IQ-DEM.examples.json](IQ-DEM.examples.json) lists payload examples checked against the codec: each uplink (`payload`, also as `payloadHex` without spaces, ready to paste) with its decoded output, and each downlink command with the bytes it encodes to.
 
 ## Firmware OTA package
 
@@ -69,6 +72,6 @@ firmware/
 - Check the images before sending them: `sha256sum -c SHA256SUMS` in the version folder.
 - Use the codec of the same version as the firmware: after an update, update the codec in the network server too. One codec decodes every variant.
 
-Firmware | Codec | DEM1 | DEM2 | DEM4
----|---|---|---|---
-v1.2.0 | 1.2.0 | Not published yet | Not published yet | Not published yet
+Firmware | Codec | DEM1 | DEM2 | DEM4 | Changes
+---|---|---|---|---|---
+v1.2.0 | 1.2.0 | [IQ-DEM1_v1.2.0.bin](firmware/v1.2.0/IQ-DEM1_v1.2.0.bin) | [IQ-DEM2_v1.2.0.bin](firmware/v1.2.0/IQ-DEM2_v1.2.0.bin) | [IQ-DEM4_v1.2.0.bin](firmware/v1.2.0/IQ-DEM4_v1.2.0.bin) | [CHANGELOG.md](firmware/v1.2.0/CHANGELOG.md)

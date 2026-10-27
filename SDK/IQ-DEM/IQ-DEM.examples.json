@@ -1,0 +1,3393 @@
+{
+  "codec": "IQ-DEM.js",
+  "codecVersion": "1.2.0",
+  "uplinkCommon": {
+    "codecVersion": "1.2.0",
+    "genericModel": "IQ DEM",
+    "productCode": "26000x",
+    "manufacturer": "YOBIIQ B.V."
+  },
+  "uplinks": [
+    {
+      "name": "join uplink (fPort 50)",
+      "fPort": 50,
+      "payload": "FF6A 0100 FF69 0102 FF68 00BC614E FF9F 02 FF6B 01 FF6C 00 FF67 0749512044454D34",
+      "payloadHex": "FF6A0100FF690102FF6800BC614EFF9F02FF6B01FF6C00FF670749512044454D34",
+      "expected": {
+        "data": {
+          "hardwareVersion": "v1.0",
+          "firmwareVersion": "v1.2",
+          "deviceSerialNumber": 12345678,
+          "deviceClass": "CLASS_C",
+          "externalPowerStatus": "MAINS_POWER",
+          "batteryVoltage": 0,
+          "deviceModel": "IQ DEM4"
+        }
+      }
+    },
+    {
+      "name": "read response: two digit minor versions",
+      "fPort": 100,
+      "payload": "FF69 010A FF6A 020F",
+      "payloadHex": "FF69010AFF6A020F",
+      "expected": {
+        "data": {
+          "firmwareVersion": "v1.10",
+          "hardwareVersion": "v2.15"
+        }
+      }
+    },
+    {
+      "name": "read response: device manufacturer is kept",
+      "fPort": 100,
+      "payload": "FF65 06594F42494951 FF66 0441434D45",
+      "payloadHex": "FF6506594F42494951FF660441434D45",
+      "expected": {
+        "data": {
+          "manufacturer": "YOBIIQ",
+          "originalEquipmentManufacturer": "ACME"
+        }
+      }
+    },
+    {
+      "name": "read response: LoRaWAN settings",
+      "fPort": 100,
+      "payload": "FF9F 02 FFA0 01 FFA1 05 FFA3 02 FFA4 0A FFA5 05A0 FFA6 01 FFA7 00 FF96 01 FF9D 32 FF9E 01",
+      "payloadHex": "FF9F02FFA001FFA105FFA302FFA40AFFA505A0FFA601FFA700FF9601FF9D32FF9E01",
+      "expected": {
+        "data": {
+          "deviceClass": "CLASS_C",
+          "adr": "ENABLED",
+          "sf": "SF7BW125",
+          "radioMode": "LORAWAN_AND_IQ_D2D",
+          "numberOfJoinAttempts": 10,
+          "linkCheckTimeframe": 1440,
+          "dataRetransmission": "ENABLED",
+          "lorawanWatchdogAlarm": "NORMAL",
+          "joinStatus": "ONLINE",
+          "applicationPort": 50,
+          "joinType": "OTAA"
+        }
+      }
+    },
+    {
+      "name": "read response: ADR profile and SF12",
+      "fPort": 100,
+      "payload": "FFA2 01 FFA1 00",
+      "payloadHex": "FFA201FFA100",
+      "expected": {
+        "data": {
+          "adrProfile": "MOBILE_LONG_RANGE",
+          "sf": "SF12BW125"
+        }
+      }
+    },
+    {
+      "name": "read response: radio information",
+      "fPort": 100,
+      "payload": "FF97 064C5231313130 FF98 01 FF99 010004",
+      "payloadHex": "FF97064C5231313130FF9801FF99010004",
+      "expected": {
+        "data": {
+          "radioModule": "LR1110",
+          "lorawanRegion": "EU868",
+          "lorawanVersion": "v1.0.4"
+        }
+      }
+    },
+    {
+      "name": "read response: labels and empty string",
+      "fPort": 100,
+      "payload": "FF32 0A4275696C64696E672041 FF33 07526F6F6D203132 FF34 00",
+      "payloadHex": "FF320A4275696C64696E672041FF3307526F6F6D203132FF3400",
+      "expected": {
+        "data": {
+          "buildingName": "Building A",
+          "buildingRoom": "Room 12",
+          "deviceName": ""
+        }
+      }
+    },
+    {
+      "name": "read response: sensors and battery",
+      "fPort": 100,
+      "payload": "FF7A FF38 FF7B 37 FF82 0992 FF83 28 FF78 00 FF79 00000003 FF6B 00 FF6C 24 FF6D 64",
+      "payloadHex": "FF7AFF38FF7B37FF820992FF8328FF7800FF7900000003FF6B00FF6C24FF6D64",
+      "expected": {
+        "data": {
+          "internalCircuitTemperature": -2,
+          "internalCircuitHumidity": 55,
+          "ambientTemperature": 24.5,
+          "ambientHumidity": 40,
+          "internalCircuitTemperatureAlarm": "NORMAL",
+          "internalCircuitTemperatureNumberOfAlarms": 3,
+          "externalPowerStatus": "BATTERY_POWER",
+          "batteryVoltage": 3.6,
+          "batteryPercentage": 100
+        }
+      }
+    },
+    {
+      "name": "read response: special mode and unknown enum values",
+      "fPort": 100,
+      "payload": "FF64 01 FF98 0E FF9E 02",
+      "payloadHex": "FF6401FF980EFF9E02",
+      "expected": {
+        "data": {
+          "deviceStatus": "SPECIAL_MODE",
+          "lorawanRegion": "UNKNOWN (14)",
+          "joinType": "UNKNOWN (2)"
+        }
+      }
+    },
+    {
+      "name": "periodic: generic sensors (fPort 1)",
+      "fPort": 1,
+      "payload": "FF01 6955B900 FF7A 0929 FF7B 30 FF82 FBE6",
+      "payloadHex": "FF016955B900FF7A0929FF7B30FF82FBE6",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "internalCircuitTemperature": 23.45,
+          "internalCircuitHumidity": 48,
+          "ambientTemperature": -10.5
+        }
+      }
+    },
+    {
+      "name": "unknown register stops decoding",
+      "fPort": 100,
+      "payload": "FF6A 0100 1234 00",
+      "payloadHex": "FF6A0100123400",
+      "expected": {
+        "data": {
+          "hardwareVersion": "v1.0",
+          "error": "Unknown register 0x1234 at index 4"
+        },
+        "errors": [
+          "Unknown register 0x1234 at index 4"
+        ]
+      }
+    },
+    {
+      "name": "read response: serial number 00030051 (decimal) reads 30051",
+      "fPort": 100,
+      "payload": "FF68 00007563",
+      "payloadHex": "FF6800007563",
+      "expected": {
+        "data": {
+          "deviceSerialNumber": 30051
+        }
+      }
+    },
+    {
+      "name": "read response: serial number above 0x7FFFFFFF stays positive",
+      "fPort": 100,
+      "payload": "FF68 956600E6",
+      "payloadHex": "FF68956600E6",
+      "expected": {
+        "data": {
+          "deviceSerialNumber": 2506490086
+        }
+      }
+    },
+    {
+      "name": "truncated value is an error",
+      "fPort": 100,
+      "payload": "FF68 0001",
+      "payloadHex": "FF680001",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0xFF68 at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0xFF68 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "truncated string is an error",
+      "fPort": 100,
+      "payload": "FF34 05 4142",
+      "payloadHex": "FF34054142",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0xFF34 at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0xFF34 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "truncated address is an error",
+      "fPort": 100,
+      "payload": "FF6A 0100 12",
+      "payloadHex": "FF6A010012",
+      "expected": {
+        "data": {
+          "hardwareVersion": "v1.0",
+          "error": "Incomplete register address at index 4"
+        },
+        "errors": [
+          "Incomplete register address at index 4"
+        ]
+      }
+    },
+    {
+      "name": "status byte: command succeeded (fPort 50)",
+      "fPort": 50,
+      "payload": "00",
+      "payloadHex": "00",
+      "expected": {
+        "data": {
+          "info": "DOWNLINK COMMAND SUCCEEDED"
+        }
+      }
+    },
+    {
+      "name": "status byte: command failed (fPort 100)",
+      "fPort": 100,
+      "payload": "01",
+      "payloadHex": "01",
+      "expected": {
+        "data": {
+          "warning": "DOWNLINK COMMAND FAILED"
+        },
+        "warnings": [
+          "DOWNLINK COMMAND FAILED"
+        ]
+      }
+    },
+    {
+      "name": "status byte: uplink configuration accepted (fPort 3)",
+      "fPort": 3,
+      "payload": "00",
+      "payloadHex": "00",
+      "expected": {
+        "data": {
+          "info": "DOWNLINK COMMAND SUCCEEDED"
+        }
+      }
+    },
+    {
+      "name": "MAC commands (fPort 0)",
+      "fPort": 0,
+      "payload": "0302",
+      "payloadHex": "0302",
+      "expected": {
+        "data": {
+          "mac": "MAC COMMAND RECEIVED",
+          "fPort": 0
+        }
+      }
+    },
+    {
+      "name": "FUOTA fragment (fPort 201)",
+      "fPort": 201,
+      "payload": "08 0001 AABBCCDD",
+      "payloadHex": "080001AABBCCDD",
+      "expected": {
+        "data": {
+          "info": "FUOTA DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "FMP: device version (fPort 203)",
+      "fPort": 203,
+      "payload": "01 03000201 00000001",
+      "payloadHex": "010300020100000001",
+      "expected": {
+        "data": {
+          "fmpDevVersionAns": {
+            "firmware": {
+              "major": 1,
+              "minor": 2,
+              "revision": 3,
+              "version": "v1.2.3"
+            },
+            "hardware": {
+              "major": 1,
+              "minor": 0,
+              "revision": 0,
+              "version": "v1.0.0"
+            }
+          },
+          "info": "FIRMWARE MANAGEMENT DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "FMP: upgrade image valid (fPort 203)",
+      "fPort": 203,
+      "payload": "04 03 03000201",
+      "payloadHex": "040303000201",
+      "expected": {
+        "data": {
+          "fmpDevUpgradeImageAns": {
+            "major": 1,
+            "minor": 2,
+            "revision": 3,
+            "version": "v1.2.3",
+            "status": "FIRMWARE_UPGRADE_IMAGE_VALID"
+          },
+          "info": "FIRMWARE MANAGEMENT DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "FMP: upgrade image invalid (fPort 203)",
+      "fPort": 203,
+      "payload": "04 01",
+      "payloadHex": "0401",
+      "expected": {
+        "data": {
+          "fmpDevUpgradeImageAns": {
+            "status": "FIRMWARE_UPGRADE_IMAGE_INVALID"
+          },
+          "info": "FIRMWARE MANAGEMENT DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "unsupported fPort",
+      "fPort": 150,
+      "payload": "0102",
+      "payloadHex": "0102",
+      "expected": {
+        "data": {
+          "fPort": 150,
+          "error": "Incorrect fPort"
+        },
+        "errors": [
+          "Incorrect fPort"
+        ]
+      }
+    },
+    {
+      "name": "periodic: float32 measurements",
+      "fPort": 1,
+      "payload": "FF01 6955B900 0101 43661EB8 0201 40A80000 0300 C49A5000 03F0 3F7CAC08 0000 4248147B",
+      "payloadHex": "FF016955B900010143661EB8020140A800000300C49A500003F03F7CAC0800004248147B",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "voltageL1N": 230.12,
+          "currentL1": 5.25,
+          "activePowerTotal": -1234.5,
+          "powerFactorSystem": 0.987,
+          "frequency": 50.02
+        }
+      }
+    },
+    {
+      "name": "periodic: phase sequence and float64 energies",
+      "fPort": 2,
+      "payload": "FF01 6955B900 0010 FFFFFFFF 0400 40C81CD6C8B43958 0501 3FE0000000000000 07A3 40F81CD6E9E1B08A",
+      "payloadHex": "FF016955B9000010FFFFFFFF040040C81CD6C8B4395805013FE000000000000007A340F81CD6E9E1B08A",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "phaseSequence": -1,
+          "importActiveEnergySystem": 12345.678,
+          "exportActiveEnergyL1": 0.5,
+          "exportReactiveEnergyL3Partial": 98765.4321
+        }
+      }
+    },
+    {
+      "name": "periodic: NaN readings decode as null",
+      "fPort": 1,
+      "payload": "FF01 6955B900 0101 7FC00000 0400 7FF8000000000000",
+      "payloadHex": "FF016955B90001017FC0000004007FF8000000000000",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "voltageL1N": null,
+          "importActiveEnergySystem": null
+        }
+      }
+    },
+    {
+      "name": "periodic: reactive zones, balances and demands",
+      "fPort": 3,
+      "payload": "FF01 6955B900 A123 3FF4000000000000 08F3 C00C000000000000 0803 401C000000000000 02D3 40900000 03C0 450FC000",
+      "payloadHex": "FF016955B900A1233FF400000000000008F3C00C0000000000000803401C00000000000002D34090000003C0450FC000",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "reactiveEnergyZone1L3T2": 1.25,
+          "reactiveEnergyBalanceL3": -3.5,
+          "activeEnergyBalanceL3": 7,
+          "currentDemandL3": 4.5,
+          "apparentPowerMaxDemand": 2300
+        }
+      }
+    },
+    {
+      "name": "read response: digital input status and counters",
+      "fPort": 100,
+      "payload": "2100 00000002 2110 000004D2 2111 00000E10 2120 00000000 2121 FFFFFFFF",
+      "payloadHex": "2100000000022110000004D2211100000E102120000000002121FFFFFFFF",
+      "expected": {
+        "data": {
+          "digitalInputFlags": {
+            "digitalInput1Flag": "NO_ERROR",
+            "digitalInput2Flag": "ERROR"
+          },
+          "digitalInput1Counter": 1234,
+          "digitalInput1OnTime": 3600,
+          "digitalInput2Counter": 0,
+          "digitalInput2OnTime": 4294967295
+        }
+      }
+    },
+    {
+      "name": "read response: diagnostic alarm and error flags",
+      "fPort": 100,
+      "payload": "EEA0 00010001 EEE0 00000005",
+      "payloadHex": "EEA000010001EEE000000005",
+      "expected": {
+        "data": {
+          "diagnosticAlarms": {
+            "alarmLowVoltageLN": "ALARM",
+            "alarmLowCurrent": "NO_ALARM",
+            "alarmLowActivePower": "NO_ALARM",
+            "alarmLowReactivePower": "NO_ALARM",
+            "alarmLowApparentPower": "NO_ALARM",
+            "alarmLowPowerFactor": "NO_ALARM",
+            "alarmLowFrequency": "NO_ALARM",
+            "alarmHighVoltageLN": "ALARM",
+            "alarmHighCurrent": "NO_ALARM",
+            "alarmHighActivePower": "NO_ALARM",
+            "alarmHighReactivePower": "NO_ALARM",
+            "alarmHighApparentPower": "NO_ALARM",
+            "alarmHighPowerFactor": "NO_ALARM",
+            "alarmHighFrequency": "NO_ALARM"
+          },
+          "diagnosticErrorFlags": {
+            "pulse1ErrorFlag": "ERROR",
+            "pulse2ErrorFlag": "NO_ERROR",
+            "phaseSequenceErrorFlag": "ERROR",
+            "currentDirectionErrorFlag": "NO_ERROR"
+          }
+        }
+      }
+    },
+    {
+      "name": "read response: serial link",
+      "fPort": 100,
+      "payload": "6000 00 6001 01 6002 01 6003 02 6004 08 6005 00002580 6009 0032 600A 01F4 600C 03",
+      "payloadHex": "60000060010160020160030260040860050000258060090032600A01F4600C03",
+      "expected": {
+        "data": {
+          "serialWatchdogAlarm": "NORMAL",
+          "serialModbusSlaveId": 1,
+          "serialStopBits": 1,
+          "serialParity": "EVEN",
+          "serialDataWidth": 8,
+          "serialBaudRate": 9600,
+          "serialModbusExecutionInterval": 50,
+          "serialModbusResponseTimeout": 500,
+          "serialModbusMaxRetries": 3
+        }
+      }
+    },
+    {
+      "name": "read response: unknown parity is labelled",
+      "fPort": 100,
+      "payload": "6003 07",
+      "payloadHex": "600307",
+      "expected": {
+        "data": {
+          "serialParity": "UNKNOWN (7)"
+        }
+      }
+    },
+    {
+      "name": "read response: installation labels",
+      "fPort": 100,
+      "payload": "EE3C 09436162696E65742031 EE3D 00",
+      "payloadHex": "EE3C09436162696E65742031EE3D00",
+      "expected": {
+        "data": {
+          "electricalCabinet": "Cabinet 1",
+          "electricalGroup": ""
+        }
+      }
+    },
+    {
+      "name": "read response: meter firmware version (0xEE3E u16, major x 256 + minor, RAM only, firmware 0xEE3E read handler)",
+      "fPort": 100,
+      "payload": "EE3E 0207 FF69 0101",
+      "payloadHex": "EE3E0207FF690101",
+      "expected": {
+        "data": {
+          "meterFirmwareVersion": "v2.7",
+          "firmwareVersion": "v1.1"
+        }
+      }
+    },
+    {
+      "name": "read response: meter firmware version before the meter has answered (0x0000)",
+      "fPort": 100,
+      "payload": "EE3E 0000",
+      "payloadHex": "EE3E0000",
+      "expected": {
+        "data": {
+          "meterFirmwareVersion": "v0.0"
+        }
+      }
+    },
+    {
+      "name": "periodic: running and meter firmware versions (fPort 2)",
+      "fPort": 2,
+      "payload": "FF01 6955B900 FF69 0101 EE3E 0207",
+      "payloadHex": "FF016955B900FF690101EE3E0207",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "firmwareVersion": "v1.1",
+          "meterFirmwareVersion": "v2.7"
+        }
+      }
+    },
+    {
+      "name": "read response: digital outputs",
+      "fPort": 100,
+      "payload": "1000 01 1002 00 1004 01 1008 03 100C 0032 1020 05 1022 01 1028 06",
+      "payloadHex": "100001100200100401100803100C0032102005102201102806",
+      "expected": {
+        "data": {
+          "digitalOutput1Source": "IMPORT_ACTIVE_ENERGY",
+          "digitalOutput1Mode": "ENERGY",
+          "digitalOutput1EnergyWeight": 1,
+          "digitalOutput1Multiplier": "x1",
+          "digitalOutput1OnTime": 50,
+          "digitalOutput2Source": "REMOTE",
+          "digitalOutput2Mode": "ALARM",
+          "digitalOutput2Multiplier": "x1000"
+        }
+      }
+    },
+    {
+      "name": "read response: digital output 2 source instantaneous current",
+      "fPort": 100,
+      "payload": "1020 06",
+      "payloadHex": "102006",
+      "expected": {
+        "data": {
+          "digitalOutput2Source": "INSTANTANEOUS_CURRENT"
+        }
+      }
+    },
+    {
+      "name": "read response: digital output 2 source voltage",
+      "fPort": 100,
+      "payload": "1020 07",
+      "payloadHex": "102007",
+      "expected": {
+        "data": {
+          "digitalOutput2Source": "VOLTAGE"
+        }
+      }
+    },
+    {
+      "name": "read response: digital output 2 source out of range",
+      "fPort": 100,
+      "payload": "1020 08",
+      "payloadHex": "102008",
+      "expected": {
+        "data": {
+          "digitalOutput2Source": "UNKNOWN (8)"
+        }
+      }
+    },
+    {
+      "name": "read response: digital inputs, demand and meter commands",
+      "fPort": 100,
+      "payload": "2000 01 2004 00C8 2008 02 3000 01 3004 0F 3008 01 4000 00 4006 01",
+      "payloadHex": "200001200400C820080230000130040F300801400000400601",
+      "expected": {
+        "data": {
+          "digitalInput1Source": "TARIFF",
+          "digitalInput1Delay": 200,
+          "digitalInput1Edge": "BOTH",
+          "demandMethod": "SLIDING",
+          "demandPeriod": 15,
+          "demandRollingSubPeriod": 1,
+          "meterSaveConfiguration": 0,
+          "meterClearDemandData": 1
+        }
+      }
+    },
+    {
+      "name": "read response: transformers",
+      "fPort": 100,
+      "payload": "5000 00000190 5001 0064 5002 00FA 5003 0001",
+      "payloadHex": "50000000019050010064500200FA50030001",
+      "expected": {
+        "data": {
+          "voltageTransformerPrimary": 400,
+          "voltageTransformerSecondary": 100,
+          "currentTransformerPrimary": 250,
+          "currentTransformerSecondary": 1
+        }
+      }
+    },
+    {
+      "name": "alarm: temperature, LoRaWAN and serial link (fPort 11)",
+      "fPort": 11,
+      "payload": "FF01 6955B900 FF78 01 FFA7 00 6000 01",
+      "payloadHex": "FF016955B900FF7801FFA700600001",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "internalCircuitTemperatureAlarm": "ALARM",
+          "lorawanWatchdogAlarm": "NORMAL",
+          "serialWatchdogAlarm": "ALARM"
+        }
+      }
+    },
+    {
+      "name": "export reactive energy T3 is not a DEM register",
+      "fPort": 1,
+      "payload": "FF01 6955B900 0730 3FF0000000000000",
+      "payloadHex": "FF016955B90007303FF0000000000000",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "error": "Unknown register 0x0730 at index 6"
+        },
+        "errors": [
+          "Unknown register 0x0730 at index 6"
+        ]
+      }
+    },
+    {
+      "name": "relay: state info of both channels",
+      "fPort": 2,
+      "payload": "FF01 6955B900 B113 01000100 B213 00020400",
+      "payloadHex": "FF016955B900B11301000100B21300020400",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "channel1RelayStateInfo": {
+            "state": "ON",
+            "controlMode": "NORMAL",
+            "reason": "DOWNLINK",
+            "protectionTrip": "NONE"
+          },
+          "channel2RelayStateInfo": {
+            "state": "OFF",
+            "controlMode": "MANUAL_OFF",
+            "reason": "MANUAL",
+            "protectionTrip": "NONE"
+          }
+        }
+      }
+    },
+    {
+      "name": "relay: unknown enum values are labelled",
+      "fPort": 2,
+      "payload": "FF01 6955B900 B113 02090805 B104 07",
+      "payloadHex": "FF016955B900B11302090805B10407",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "channel1RelayStateInfo": {
+            "state": "UNKNOWN (2)",
+            "controlMode": "UNKNOWN (9)",
+            "reason": "UNKNOWN (8)",
+            "protectionTrip": "UNKNOWN (5)"
+          },
+          "channel1DesiredState": "UNKNOWN (7)"
+        }
+      }
+    },
+    {
+      "name": "relay: channel configuration",
+      "fPort": 100,
+      "payload": "B100 00 B101 01 B102 01 B103 01 B104 02 B105 00 B106 01 B107 00FD B108 00B4 B109 01",
+      "payloadHex": "B10000B10101B10201B10301B10402B10500B10601B10700FDB10800B4B10901",
+      "expected": {
+        "data": {
+          "channel1ControlMode": "NORMAL",
+          "channel1InitialState": "ON",
+          "channel1WeekTimer": "ENABLED",
+          "channel1WeekTimerScheduleValidity": "VALID",
+          "channel1DesiredState": "OFF_BY_DL",
+          "channel1BleControl": "DISABLED",
+          "channel1VoltageProtection": "ENABLED",
+          "channel1VoltageHighLimit": 253,
+          "channel1VoltageLowLimit": 180,
+          "channel1CurrentProtection": "ENABLED"
+        }
+      }
+    },
+    {
+      "name": "relay: consumption and counters",
+      "fPort": 100,
+      "payload": "B20A 0010 B20B 0001E240 B20C 00000038 B20D 01 B20E 000003E8 B20F 00 B212 EE6B2800",
+      "payloadHex": "B20A0010B20B0001E240B20C00000038B20D01B20E000003E8B20F00B212EE6B2800",
+      "expected": {
+        "data": {
+          "channel2CurrentLimit": 16,
+          "channel2ConsumptionCumulative": 123456,
+          "channel2ConsumptionCurrentUser": 56,
+          "channel2Prepaid": "ENABLED",
+          "channel2AllowedConsumption": 1000,
+          "channel2Postpaid": "DISABLED",
+          "channel2OnOffCycles": 4000000000
+        }
+      }
+    },
+    {
+      "name": "relay: momentary registers and global settings",
+      "fPort": 100,
+      "payload": "B110 1E B111 07 B0EC 4B B0ED 003C",
+      "payloadHex": "B1101EB11107B0EC4BB0ED003C",
+      "expected": {
+        "data": {
+          "channel1MomentaryDuration": 30,
+          "channel1MomentaryRequestId": 7,
+          "overheatThreshold": 75,
+          "protectionDelay": 60
+        }
+      }
+    },
+    {
+      "name": "relay: week timer windows",
+      "fPort": 100,
+      "payload": "C100 01E0 C101 03C0 C136 0000 C237 05A0",
+      "payloadHex": "C10001E0C10103C0C1360000C23705A0",
+      "expected": {
+        "data": {
+          "channel1MondayWindow1StartMinute": 480,
+          "channel1MondayWindow1EndMinute": 960,
+          "channel1SundayWindow4StartMinute": 0,
+          "channel2SundayWindow4EndMinute": 1440
+        }
+      }
+    },
+    {
+      "name": "relay alarm: change of state with on/off cycles (fPort 11)",
+      "fPort": 11,
+      "payload": "FF01 6955B900 B114 01000100 00000601 B112 0000002A",
+      "payloadHex": "FF016955B900B1140100010000000601B1120000002A",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "channel1RelayChangeOfState": {
+            "previous": {
+              "state": "ON",
+              "controlMode": "NORMAL",
+              "reason": "DOWNLINK",
+              "protectionTrip": "NONE"
+            },
+            "current": {
+              "state": "OFF",
+              "controlMode": "NORMAL",
+              "reason": "PROTECTION",
+              "protectionTrip": "OVERHEAT"
+            }
+          },
+          "channel1OnOffCycles": 42
+        }
+      }
+    },
+    {
+      "name": "relay alarm: mode change without switching (fPort 11)",
+      "fPort": 11,
+      "payload": "FF01 6955B900 B214 01000100 01010400",
+      "payloadHex": "FF016955B900B2140100010001010400",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "channel2RelayChangeOfState": {
+            "previous": {
+              "state": "ON",
+              "controlMode": "NORMAL",
+              "reason": "DOWNLINK",
+              "protectionTrip": "NONE"
+            },
+            "current": {
+              "state": "ON",
+              "controlMode": "MANUAL_ON",
+              "reason": "MANUAL",
+              "protectionTrip": "NONE"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "relay: truncated state info is an error",
+      "fPort": 100,
+      "payload": "B113 0100",
+      "payloadHex": "B1130100",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0xB113 at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0xB113 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "relay: LoRaWAN relay watchdog settings while offline",
+      "fPort": 100,
+      "payload": "B0EE 01 FFA7 01",
+      "payloadHex": "B0EE01FFA701",
+      "expected": {
+        "data": {
+          "watchdog": "ENABLED",
+          "lorawanWatchdogAlarm": "ALARM"
+        }
+      }
+    },
+    {
+      "name": "relay: removed watchdog timeout register 0xB0EF is unknown",
+      "fPort": 100,
+      "payload": "B0EE 00 B0EF FFFF",
+      "payloadHex": "B0EE00B0EFFFFF",
+      "expected": {
+        "data": {
+          "watchdog": "DISABLED",
+          "error": "Unknown register 0xB0EF at index 3"
+        },
+        "errors": [
+          "Unknown register 0xB0EF at index 3"
+        ]
+      }
+    },
+    {
+      "name": "status byte: max demand configuration accepted (fPort 11)",
+      "fPort": 11,
+      "payload": "00",
+      "payloadHex": "00",
+      "expected": {
+        "data": {
+          "info": "DOWNLINK COMMAND SUCCEEDED"
+        }
+      }
+    },
+    {
+      "name": "max demand history (fPort 20)",
+      "fPort": 20,
+      "payload": "FF01 6955B900 02E0 0000 41480000 02E0 000F 41240000",
+      "payloadHex": "FF016955B90002E000004148000002E0000F41240000",
+      "expected": {
+        "data": {
+          "packageTimestamp": 1767225600,
+          "listOfMeasurements": [
+            {
+              "name": "currentMaxDemandTotal",
+              "data": 12.5,
+              "ts": 1767225600
+            },
+            {
+              "name": "currentMaxDemandTotal",
+              "data": 10.25,
+              "ts": 1767224700
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "max demand history without FF01 header",
+      "fPort": 20,
+      "payload": "02E0 0000 41480000",
+      "payloadHex": "02E0000041480000",
+      "expected": {
+        "data": {
+          "error": "Max demand payload must start with the FF01 timestamp"
+        },
+        "errors": [
+          "Max demand payload must start with the FF01 timestamp"
+        ]
+      }
+    },
+    {
+      "name": "max demand history with unknown register",
+      "fPort": 20,
+      "payload": "FF01 6955B900 1234 0000 00000000",
+      "payloadHex": "FF016955B9001234000000000000",
+      "expected": {
+        "data": {
+          "error": "Unknown or incomplete register 0x1234 at index 6"
+        },
+        "errors": [
+          "Unknown or incomplete register 0x1234 at index 6"
+        ]
+      }
+    }
+  ],
+  "downlinks": [
+    {
+      "name": "config: restart LoRaWAN",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF9501"
+      }
+    },
+    {
+      "name": "config: reboot device",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "rebootDevice",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF6F01"
+      }
+    },
+    {
+      "name": "config: reboot value other than 1 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "rebootDevice",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check rebootDevice in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: default fPort is 50",
+      "input": {
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA001"
+      }
+    },
+    {
+      "name": "config: ADR off and SF9",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 0
+          },
+          {
+            "Param": "sf",
+            "Value": 3
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA000 FFA103"
+      }
+    },
+    {
+      "name": "config: enum value by label",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": "ENABLED"
+          },
+          {
+            "Param": "deviceClass",
+            "Value": "CLASS_A"
+          },
+          {
+            "Param": "radioMode",
+            "Value": "IQ_D2D"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA001 FF9F00 FFA301"
+      }
+    },
+    {
+      "name": "config: device class C",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "deviceClass",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF9F02"
+      }
+    },
+    {
+      "name": "config: ADR profile",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adrProfile",
+            "Value": "MOBILE_LOW_POWER"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA202"
+      }
+    },
+    {
+      "name": "config: radio mode and join attempts",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "radioMode",
+            "Value": 0
+          },
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 0
+          },
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 255
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA300 FFA400 FFA4FF"
+      }
+    },
+    {
+      "name": "config: building name string",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "buildingName",
+            "Value": "Office 12"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF32 094F6666696365203132"
+      }
+    },
+    {
+      "name": "config: empty device name",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "deviceName",
+            "Value": ""
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF34 00"
+      }
+    },
+    {
+      "name": "config: link check timeframe (u16)",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "linkCheckTimeframe",
+            "Value": 1440
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA5 05A0"
+      }
+    },
+    {
+      "name": "config: string longer than 15 characters rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "buildingName",
+            "Value": "A very long building"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check buildingName in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: non ASCII string rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "deviceName",
+            "Value": "Café"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check deviceName in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: value below minimum rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "linkCheckTimeframe",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check linkCheckTimeframe in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: value above the register size rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 256
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check numberOfJoinAttempts in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: fractional value rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 1.5
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check numberOfJoinAttempts in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: string value for a number rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": "5"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check numberOfJoinAttempts in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown enum value rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check adr in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown enum label rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "sf",
+            "Value": "SF6BW125"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check sf in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: read-only register rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "applicationPort",
+            "Value": 60
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check applicationPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: LoRaWAN region is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "lorawanRegion",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check lorawanRegion in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown parameter rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "foo",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not found in the device registers: please check foo in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: Param without Value rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add Param and Value to each object in the Config array"
+        ]
+      }
+    },
+    {
+      "name": "config: Config must be an array",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": {
+          "Param": "adr",
+          "Value": 1
+        }
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Config in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: wrong fPort rejected",
+      "input": {
+        "fPort": 3,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 3,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: more than 10 parameters rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Config in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: command over 64 bytes rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "buildingName",
+            "Value": "ABCDEFGHIJKLMNO"
+          },
+          {
+            "Param": "buildingRoom",
+            "Value": "ABCDEFGHIJKLMNO"
+          },
+          {
+            "Param": "deviceName",
+            "Value": "ABCDEFGHIJKLMNO"
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "sf",
+            "Value": 5
+          },
+          {
+            "Param": "deviceClass",
+            "Value": 0
+          },
+          {
+            "Param": "linkCheckTimeframe",
+            "Value": 60
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Command too long: 67 bytes, the device accepts at most 64"
+        ]
+      }
+    },
+    {
+      "name": "command without Type rejected",
+      "input": {
+        "fPort": 50,
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add Type to the command"
+        ]
+      }
+    },
+    {
+      "name": "unknown command Type rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Foo"
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please check Foo in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: LoRaWAN settings",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "adr",
+          "sf",
+          "linkCheckTimeframe"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC FFA0 FFA1 FFA5"
+      }
+    },
+    {
+      "name": "reading: default fPort is 100",
+      "input": {
+        "Type": "Reading",
+        "Reading": [
+          "firmwareVersion"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC FF69"
+      }
+    },
+    {
+      "name": "reading: meter firmware version",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "meterFirmwareVersion",
+          "firmwareVersion"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC EE3E FF69"
+      }
+    },
+    {
+      "name": "reading: ADR profile",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "adrProfile"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC FFA2"
+      }
+    },
+    {
+      "name": "reading: write-only register rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "rebootDevice"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check rebootDevice in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: uplink header is not a register",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "dataloggerTimestamp"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check dataloggerTimestamp in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: wrong fPort rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Reading",
+        "Reading": [
+          "adr"
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: more than 10 registers rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Reading in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: empty list rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": []
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Reading in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: 15 min unconfirmed uplink on fPort 2",
+      "input": {
+        "fPort": 2,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 15,
+          "Mode": 0,
+          "Status": 1,
+          "Registers": [
+            "voltageL1N",
+            "currentL1",
+            "activePowerTotal",
+            "frequency"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 2,
+        "bytes": "FF14000F FF1500 FF1601 FF1708 0101 0201 0300 0000"
+      }
+    },
+    {
+      "name": "periodic: interval only",
+      "input": {
+        "fPort": 3,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 60
+        }
+      },
+      "expected": {
+        "fPort": 3,
+        "bytes": "FF14003C"
+      }
+    },
+    {
+      "name": "periodic: confirmed and disabled",
+      "input": {
+        "fPort": 10,
+        "Type": "Periodic",
+        "Periodic": {
+          "Mode": 1,
+          "Status": 0
+        }
+      },
+      "expected": {
+        "fPort": 10,
+        "bytes": "FF1501 FF1600"
+      }
+    },
+    {
+      "name": "periodic: maximum interval",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 65535
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "FF14FFFF"
+      }
+    },
+    {
+      "name": "periodic: zero interval rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 0,
+          "Mode": 0,
+          "Status": 1
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check UplinkInterval in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: interval above 65535 rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 65536
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check UplinkInterval in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: invalid mode rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Mode": 2
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Mode in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: invalid status rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Status": "1"
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Status in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: more than 10 registers rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Registers": [
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N",
+            "voltageL1N"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Registers in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: write-only register rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Registers": [
+            "restartLoRaWAN"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check restartLoRaWAN in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: empty configuration rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {}
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add UplinkInterval, Mode, Status or Registers"
+        ]
+      }
+    },
+    {
+      "name": "periodic: fPort outside 1-10 rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 15
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: meter slave id and baud rate",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialModbusSlaveId",
+            "Value": 2
+          },
+          {
+            "Param": "serialBaudRate",
+            "Value": 19200
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "600102 6005 00004B00"
+      }
+    },
+    {
+      "name": "config: serial parity by label and 2 stop bits",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialParity",
+            "Value": "EVEN"
+          },
+          {
+            "Param": "serialStopBits",
+            "Value": 2
+          },
+          {
+            "Param": "serialDataWidth",
+            "Value": 7
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "600302 600202 600407"
+      }
+    },
+    {
+      "name": "config: Modbus timing",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialModbusExecutionInterval",
+            "Value": 50
+          },
+          {
+            "Param": "serialModbusResponseTimeout",
+            "Value": 500
+          },
+          {
+            "Param": "serialModbusMaxRetries",
+            "Value": 5
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "6009 0032 600A 01F4 600C05"
+      }
+    },
+    {
+      "name": "config: baud rate outside the allowed list rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialBaudRate",
+            "Value": 14400
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialBaudRate in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: 1.5 stop bits (3) rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialStopBits",
+            "Value": 3
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialStopBits in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: 4 stop bits rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialStopBits",
+            "Value": 4
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialStopBits in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: slave id 248 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialModbusSlaveId",
+            "Value": 248
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialModbusSlaveId in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: execution interval below 50 ms rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialModbusExecutionInterval",
+            "Value": 49
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialModbusExecutionInterval in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: serial alarm is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialWatchdogAlarm",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check serialWatchdogAlarm in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: meter firmware version is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "meterFirmwareVersion",
+            "Value": 513
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check meterFirmwareVersion in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: electrical cabinet",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "electricalCabinet",
+            "Value": "Cabinet 1"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "EE3C 09436162696E65742031"
+      }
+    },
+    {
+      "name": "config: digital output 2 pulses",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput2Source",
+            "Value": "IMPORT_ACTIVE_ENERGY"
+          },
+          {
+            "Param": "digitalOutput2Mode",
+            "Value": 0
+          },
+          {
+            "Param": "digitalOutput2EnergyWeight",
+            "Value": 5
+          },
+          {
+            "Param": "digitalOutput2Multiplier",
+            "Value": "x10"
+          },
+          {
+            "Param": "digitalOutput2OnTime",
+            "Value": 100
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "102001 102200 102405 102804 102C 0064"
+      }
+    },
+    {
+      "name": "config: digital output 2 remote control",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput2Source",
+            "Value": "REMOTE"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "102005"
+      }
+    },
+    {
+      "name": "config: digital output 2 relay logic sources",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput2Source",
+            "Value": "INSTANTANEOUS_CURRENT"
+          },
+          {
+            "Param": "digitalOutput2Source",
+            "Value": 7
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "102006 102007"
+      }
+    },
+    {
+      "name": "config: digital output 2 source 8 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput2Source",
+            "Value": 8
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check digitalOutput2Source in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: digital output 1 is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput1Source",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check digitalOutput1Source in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: digital output energy weight 0 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput2EnergyWeight",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check digitalOutput2EnergyWeight in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: digital output on time below 30 ms rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalOutput2OnTime",
+            "Value": 29
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check digitalOutput2OnTime in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: digital input as tariff input",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalInput1Source",
+            "Value": "TARIFF"
+          },
+          {
+            "Param": "digitalInput1Delay",
+            "Value": 500
+          },
+          {
+            "Param": "digitalInput1Edge",
+            "Value": "FALLING"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "200001 2004 01F4 200801"
+      }
+    },
+    {
+      "name": "config: digital input delay above 2000 ms rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "digitalInput2Delay",
+            "Value": 2001
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check digitalInput2Delay in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: rolling demand",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "demandMethod",
+            "Value": "ROLLING"
+          },
+          {
+            "Param": "demandPeriod",
+            "Value": 15
+          },
+          {
+            "Param": "demandRollingSubPeriod",
+            "Value": 5
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "300002 30040F 300805"
+      }
+    },
+    {
+      "name": "config: demand period above 60 min rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "demandPeriod",
+            "Value": 61
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check demandPeriod in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: meter commands",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "meterClearDemandData",
+            "Value": 1
+          },
+          {
+            "Param": "meterActivateTariff2",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "400601 401001"
+      }
+    },
+    {
+      "name": "config: meter command value other than 1 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "meterRestart",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check meterRestart in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: current transformer",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "currentTransformerPrimary",
+            "Value": 250
+          },
+          {
+            "Param": "currentTransformerSecondary",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "5002 00FA 5003 0001"
+      }
+    },
+    {
+      "name": "config: current transformer primary 0 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "currentTransformerPrimary",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check currentTransformerPrimary in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: voltage transformer is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "voltageTransformerPrimary",
+            "Value": 400
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check voltageTransformerPrimary in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: measurements are read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "voltageL1N",
+            "Value": 230
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check voltageL1N in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: measurements",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "voltageL1N",
+          "currentL1",
+          "importActiveEnergySystem",
+          "diagnosticErrorFlags"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC 0101 0201 0400 EEE0"
+      }
+    },
+    {
+      "name": "relay: switch channel 1 on",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1DesiredState",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B10401"
+      }
+    },
+    {
+      "name": "relay: desired state by label",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2DesiredState",
+            "Value": "OFF_BY_DL"
+          },
+          {
+            "Param": "channel1DesiredState",
+            "Value": "AUTO"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B20402 B10400"
+      }
+    },
+    {
+      "name": "relay: BLE desired state rejected over LoRaWAN",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1DesiredState",
+            "Value": 3
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel1DesiredState in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: control mode back to NORMAL",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1ControlMode",
+            "Value": "NORMAL"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B10000"
+      }
+    },
+    {
+      "name": "relay: manual control mode rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1ControlMode",
+            "Value": "MANUAL_ON"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel1ControlMode in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: momentary toggle for 30 s",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1MomentaryDuration",
+            "Value": 30
+          },
+          {
+            "Param": "channel1MomentaryRequestId",
+            "Value": 7
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B1101E B11107"
+      }
+    },
+    {
+      "name": "relay: momentary duration 0 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2MomentaryDuration",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel2MomentaryDuration in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: momentary duration above 120 s rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2MomentaryDuration",
+            "Value": 121
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel2MomentaryDuration in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: voltage protection",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1VoltageProtection",
+            "Value": "ENABLED"
+          },
+          {
+            "Param": "channel1VoltageHighLimit",
+            "Value": 253
+          },
+          {
+            "Param": "channel1VoltageLowLimit",
+            "Value": 180
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B10601 B10700FD B10800B4"
+      }
+    },
+    {
+      "name": "relay: voltage limit above 300 V rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1VoltageHighLimit",
+            "Value": 301
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel1VoltageHighLimit in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: current protection at 20 A",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2CurrentProtection",
+            "Value": 1
+          },
+          {
+            "Param": "channel2CurrentLimit",
+            "Value": 20
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B20901 B20A0014"
+      }
+    },
+    {
+      "name": "relay: current limit above 20 A rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2CurrentLimit",
+            "Value": 21
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel2CurrentLimit in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: prepaid budget and user consumption reset",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2Prepaid",
+            "Value": "ENABLED"
+          },
+          {
+            "Param": "channel2AllowedConsumption",
+            "Value": 1000
+          },
+          {
+            "Param": "channel2ConsumptionCurrentUser",
+            "Value": 0
+          },
+          {
+            "Param": "channel2Postpaid",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B20D01 B20E000003E8 B20C00000000 B20F00"
+      }
+    },
+    {
+      "name": "relay: user consumption can only be reset to 0",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1ConsumptionCurrentUser",
+            "Value": 5
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel1ConsumptionCurrentUser in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: cumulative consumption is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1ConsumptionCumulative",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check channel1ConsumptionCumulative in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: schedule validity is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1WeekTimerScheduleValidity",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check channel1WeekTimerScheduleValidity in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: global overheat threshold and protection delay",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "overheatThreshold",
+            "Value": 75
+          },
+          {
+            "Param": "protectionDelay",
+            "Value": 60
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B0EC4B B0ED003C"
+      }
+    },
+    {
+      "name": "relay: overheat threshold above 75 C rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "overheatThreshold",
+            "Value": 76
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check overheatThreshold in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: protection delay 0 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "protectionDelay",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check protectionDelay in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: protection delay 600 s (maximum) accepted",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "protectionDelay",
+            "Value": 600
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B0ED0258"
+      }
+    },
+    {
+      "name": "relay: protection delay above 600 s rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "protectionDelay",
+            "Value": 601
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check protectionDelay in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: LoRaWAN relay watchdog enabled with an initial state",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1InitialState",
+            "Value": "OFF"
+          },
+          {
+            "Param": "watchdog",
+            "Value": "ENABLED"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B10100 B0EE01"
+      }
+    },
+    {
+      "name": "relay: LoRaWAN relay watchdog disabled",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "watchdog",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "B0EE00"
+      }
+    },
+    {
+      "name": "relay: watchdog value 2 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "watchdog",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check watchdog in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: removed watchdogTimeout rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "watchdogTimeout",
+            "Value": 3600
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not found in the device registers: please check watchdogTimeout in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: week timer window and enable",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel1MondayWindow1StartMinute",
+            "Value": 480
+          },
+          {
+            "Param": "channel1MondayWindow1EndMinute",
+            "Value": 1020
+          },
+          {
+            "Param": "channel1WeekTimer",
+            "Value": "ENABLED"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "C10001E0 C10103FC B10201"
+      }
+    },
+    {
+      "name": "relay: channel 2 Friday window 3 end",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2FridayWindow3EndMinute",
+            "Value": 1440
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "C22505A0"
+      }
+    },
+    {
+      "name": "relay: week timer minute above 1440 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "channel2MondayWindow1EndMinute",
+            "Value": 1441
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check channel2MondayWindow1EndMinute in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: read channel status",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "channel1RelayStateInfo",
+          "channel2RelayStateInfo",
+          "channel1OnOffCycles",
+          "channel1MomentaryRequestId"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC B113 B213 B112 B111"
+      }
+    },
+    {
+      "name": "relay: change of state alarm is not readable",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "channel1RelayChangeOfState"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check channel1RelayChangeOfState in the command"
+        ]
+      }
+    },
+    {
+      "name": "relay: read LoRaWAN relay watchdog",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "watchdog",
+          "lorawanWatchdogAlarm"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC B0EE FFA7"
+      }
+    },
+    {
+      "name": "relay: read of the removed watchdogTimeout rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "watchdogTimeout"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not found in the device registers: please check watchdogTimeout in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: configure register, intervals and confirmed uplinks",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "FF4002E0 FF4101 FF4201 FF430005 FF44001E"
+      }
+    },
+    {
+      "name": "max demand: default fPort is 11",
+      "input": {
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "FF4002E0 FF4101 FF4201 FF430005 FF44001E"
+      }
+    },
+    {
+      "name": "max demand: deactivate unconfirmed logging",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 0,
+          "Status": 0,
+          "DataloggerInterval": 15,
+          "UplinkInterval": 60
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "FF4002E0 FF4100 FF4200 FF43000F FF44003C"
+      }
+    },
+    {
+      "name": "max demand: register that is not a max demand rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentL1",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Register in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: unknown register rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "foo",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Register in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: missing field rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 5
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add UplinkInterval to MaxDemand"
+        ]
+      }
+    },
+    {
+      "name": "max demand: zero datalogger interval rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 0,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check DataloggerInterval in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: invalid status rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 1,
+          "Status": 2,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Status in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: invalid mode rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": true,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Mode in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: wrong fPort rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "currentMaxDemandTotal",
+          "Mode": 1,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand: missing MaxDemand object rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand"
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add MaxDemand object to the command"
+        ]
+      }
+    }
+  ]
+}
