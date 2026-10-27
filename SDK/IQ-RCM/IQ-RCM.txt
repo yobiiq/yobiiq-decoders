@@ -1,0 +1,417 @@
+1. Restart the LoRaWAN interface (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+        }
+    ]
+}
+
+
+2. Configure ADR and SF (2 parameters, fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "adr",
+            "Value": 0
+        },
+        {
+            "Param": "sf",
+            "Value": "SF9BW125"
+        }
+    ]
+}
+
+- Enum values are given as a number (3) or as the label shown in uplinks ("SF9BW125").
+- At most 10 parameters, and at most 64 bytes once encoded (a 15 character string takes 18).
+- Strings are ASCII, at most 15 characters.
+
+
+3. Read device registers (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "firmwareVersion",
+        "adr",
+        "sf",
+        "radioMode",
+        "numberOfJoinAttempts",
+        "linkCheckTimeframe",
+        "dataRetransmission",
+        "lorawanWatchdogAlarm"
+    ]
+}
+
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer comes as an uplink on fPort 100.
+
+
+4. Configure a 15 min periodic unconfirmed uplink on fPort 2
+
+{
+    "fPort": 2,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 15,
+        "Mode": 0,
+        "Status": 1,
+        "Registers": [
+            "channel1RelayStateInfo",
+            "channel2RelayStateInfo",
+            "channel1OnOffCycles"
+        ]
+    }
+}
+
+- fPort 1 to 10, one configuration per fPort. Any subset of the four fields may be sent.
+- UplinkInterval: minutes, 1 to 65535
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = fPort disabled, 1 = fPort enabled
+- Registers: at most 10 readable registers
+
+
+5. Switch a relay (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1DesiredState",
+            "Value": "ON_BY_DL"
+        },
+        {
+            "Param": "channel2DesiredState",
+            "Value": "AUTO"
+        }
+    ]
+}
+
+- channel<N>DesiredState: AUTO (0), ON_BY_DL (1) or OFF_BY_DL (2) over LoRaWAN.
+
+
+6. Momentary toggle of relay 1 for 30 s (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1MomentaryDuration",
+            "Value": 30
+        },
+        {
+            "Param": "channel1MomentaryRequestId",
+            "Value": 7
+        }
+    ]
+}
+
+- Duration 1 to 120 s, sent together with a request id (0 to 255).
+
+
+7. Voltage protection on relay 1 (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1VoltageProtection",
+            "Value": "ENABLED"
+        },
+        {
+            "Param": "channel1VoltageHighLimit",
+            "Value": 253
+        },
+        {
+            "Param": "channel1VoltageLowLimit",
+            "Value": 180
+        }
+    ]
+}
+
+- Limits in volts, 0 to 300. The device requires the high limit to stay above the low limit
+  at every write, so order the parameters accordingly (raise the high limit first).
+
+
+8. Week timer of relay 1: Monday 08:00 to 17:00 (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1MondayWindow1StartMinute",
+            "Value": 480
+        },
+        {
+            "Param": "channel1MondayWindow1EndMinute",
+            "Value": 1020
+        },
+        {
+            "Param": "channel1WeekTimer",
+            "Value": "ENABLED"
+        }
+    ]
+}
+
+- Minutes of the day, 0 to 1440; 4 windows per day, Monday to Sunday.
+
+
+9. Prepaid budget of relay 2 and user consumption reset (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel2Prepaid",
+            "Value": "ENABLED"
+        },
+        {
+            "Param": "channel2AllowedConsumption",
+            "Value": 1000
+        },
+        {
+            "Param": "channel2ConsumptionCurrentUser",
+            "Value": 0
+        }
+    ]
+}
+
+- Consumption in kWh; the current user consumption can only be reset to 0.
+
+
+10. LoRaWAN watchdog: relays to their initial state as soon as the network is lost (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1InitialState",
+            "Value": "OFF"
+        },
+        {
+            "Param": "channel2InitialState",
+            "Value": "OFF"
+        },
+        {
+            "Param": "watchdog",
+            "Value": "ENABLED"
+        }
+    ]
+}
+
+- The initial states apply as soon as the device detects the loss of the network, without delay.
+  With the watchdog DISABLED, a network loss is silent (the relays keep their control) until the
+  watchdog is ENABLED during the outage, which applies the initial states at once.
+- The relays keep their initial state (reason WATCHDOG) until the device joins the network again
+  or the watchdog is disabled, then return to their previous control.
+- lorawanWatchdogAlarm reads ALARM while the network is lost.
+
+
+******************  List of registers ********************
+(R) readable, (W) writable, (RW) both. Values that only appear in uplinks (alarms) are not listed.
+
+buildingName (RW)
+buildingRoom (RW)
+deviceName (RW)
+deviceStatus (R)
+manufacturer (R)
+originalEquipmentManufacturer (R)
+deviceModel (R)
+deviceSerialNumber (R)
+firmwareVersion (R)
+hardwareVersion (R)
+externalPowerStatus (R)
+batteryVoltage (R)
+batteryPercentage (R)
+rebootDevice (W)
+internalCircuitTemperatureAlarm (R)
+internalCircuitTemperatureNumberOfAlarms (R)
+internalCircuitTemperature (R)
+internalCircuitHumidity (R)
+ambientTemperature (R)
+ambientHumidity (R)
+restartLoRaWAN (W)
+joinStatus (R)
+radioModule (R)
+lorawanRegion (R)
+lorawanVersion (R)
+applicationPort (R)
+joinType (R)
+deviceClass (RW)
+adr (RW)
+sf (RW)
+adrProfile (RW)
+radioMode (RW)
+numberOfJoinAttempts (RW)
+linkCheckTimeframe (RW)
+dataRetransmission (RW)
+lorawanWatchdogAlarm (R)
+overheatThreshold (RW)
+protectionDelay (RW)
+watchdog (RW)
+channel1ControlMode (RW)
+channel1InitialState (RW)
+channel1WeekTimer (RW)
+channel1WeekTimerScheduleValidity (R)
+channel1DesiredState (RW)
+channel1BleControl (RW)
+channel1VoltageProtection (RW)
+channel1VoltageHighLimit (RW)
+channel1VoltageLowLimit (RW)
+channel1CurrentProtection (RW)
+channel1CurrentLimit (RW)
+channel1ConsumptionCumulative (R)
+channel1ConsumptionCurrentUser (RW)
+channel1Prepaid (RW)
+channel1AllowedConsumption (RW)
+channel1Postpaid (RW)
+channel1MomentaryDuration (RW)
+channel1MomentaryRequestId (RW)
+channel1OnOffCycles (R)
+channel1RelayStateInfo (R)
+channel2ControlMode (RW)
+channel2InitialState (RW)
+channel2WeekTimer (RW)
+channel2WeekTimerScheduleValidity (R)
+channel2DesiredState (RW)
+channel2BleControl (RW)
+channel2VoltageProtection (RW)
+channel2VoltageHighLimit (RW)
+channel2VoltageLowLimit (RW)
+channel2CurrentProtection (RW)
+channel2CurrentLimit (RW)
+channel2ConsumptionCumulative (R)
+channel2ConsumptionCurrentUser (RW)
+channel2Prepaid (RW)
+channel2AllowedConsumption (RW)
+channel2Postpaid (RW)
+channel2MomentaryDuration (RW)
+channel2MomentaryRequestId (RW)
+channel2OnOffCycles (R)
+channel2RelayStateInfo (R)
+channel1MondayWindow1StartMinute (RW)
+channel1MondayWindow1EndMinute (RW)
+channel1MondayWindow2StartMinute (RW)
+channel1MondayWindow2EndMinute (RW)
+channel1MondayWindow3StartMinute (RW)
+channel1MondayWindow3EndMinute (RW)
+channel1MondayWindow4StartMinute (RW)
+channel1MondayWindow4EndMinute (RW)
+channel1TuesdayWindow1StartMinute (RW)
+channel1TuesdayWindow1EndMinute (RW)
+channel1TuesdayWindow2StartMinute (RW)
+channel1TuesdayWindow2EndMinute (RW)
+channel1TuesdayWindow3StartMinute (RW)
+channel1TuesdayWindow3EndMinute (RW)
+channel1TuesdayWindow4StartMinute (RW)
+channel1TuesdayWindow4EndMinute (RW)
+channel1WednesdayWindow1StartMinute (RW)
+channel1WednesdayWindow1EndMinute (RW)
+channel1WednesdayWindow2StartMinute (RW)
+channel1WednesdayWindow2EndMinute (RW)
+channel1WednesdayWindow3StartMinute (RW)
+channel1WednesdayWindow3EndMinute (RW)
+channel1WednesdayWindow4StartMinute (RW)
+channel1WednesdayWindow4EndMinute (RW)
+channel1ThursdayWindow1StartMinute (RW)
+channel1ThursdayWindow1EndMinute (RW)
+channel1ThursdayWindow2StartMinute (RW)
+channel1ThursdayWindow2EndMinute (RW)
+channel1ThursdayWindow3StartMinute (RW)
+channel1ThursdayWindow3EndMinute (RW)
+channel1ThursdayWindow4StartMinute (RW)
+channel1ThursdayWindow4EndMinute (RW)
+channel1FridayWindow1StartMinute (RW)
+channel1FridayWindow1EndMinute (RW)
+channel1FridayWindow2StartMinute (RW)
+channel1FridayWindow2EndMinute (RW)
+channel1FridayWindow3StartMinute (RW)
+channel1FridayWindow3EndMinute (RW)
+channel1FridayWindow4StartMinute (RW)
+channel1FridayWindow4EndMinute (RW)
+channel1SaturdayWindow1StartMinute (RW)
+channel1SaturdayWindow1EndMinute (RW)
+channel1SaturdayWindow2StartMinute (RW)
+channel1SaturdayWindow2EndMinute (RW)
+channel1SaturdayWindow3StartMinute (RW)
+channel1SaturdayWindow3EndMinute (RW)
+channel1SaturdayWindow4StartMinute (RW)
+channel1SaturdayWindow4EndMinute (RW)
+channel1SundayWindow1StartMinute (RW)
+channel1SundayWindow1EndMinute (RW)
+channel1SundayWindow2StartMinute (RW)
+channel1SundayWindow2EndMinute (RW)
+channel1SundayWindow3StartMinute (RW)
+channel1SundayWindow3EndMinute (RW)
+channel1SundayWindow4StartMinute (RW)
+channel1SundayWindow4EndMinute (RW)
+channel2MondayWindow1StartMinute (RW)
+channel2MondayWindow1EndMinute (RW)
+channel2MondayWindow2StartMinute (RW)
+channel2MondayWindow2EndMinute (RW)
+channel2MondayWindow3StartMinute (RW)
+channel2MondayWindow3EndMinute (RW)
+channel2MondayWindow4StartMinute (RW)
+channel2MondayWindow4EndMinute (RW)
+channel2TuesdayWindow1StartMinute (RW)
+channel2TuesdayWindow1EndMinute (RW)
+channel2TuesdayWindow2StartMinute (RW)
+channel2TuesdayWindow2EndMinute (RW)
+channel2TuesdayWindow3StartMinute (RW)
+channel2TuesdayWindow3EndMinute (RW)
+channel2TuesdayWindow4StartMinute (RW)
+channel2TuesdayWindow4EndMinute (RW)
+channel2WednesdayWindow1StartMinute (RW)
+channel2WednesdayWindow1EndMinute (RW)
+channel2WednesdayWindow2StartMinute (RW)
+channel2WednesdayWindow2EndMinute (RW)
+channel2WednesdayWindow3StartMinute (RW)
+channel2WednesdayWindow3EndMinute (RW)
+channel2WednesdayWindow4StartMinute (RW)
+channel2WednesdayWindow4EndMinute (RW)
+channel2ThursdayWindow1StartMinute (RW)
+channel2ThursdayWindow1EndMinute (RW)
+channel2ThursdayWindow2StartMinute (RW)
+channel2ThursdayWindow2EndMinute (RW)
+channel2ThursdayWindow3StartMinute (RW)
+channel2ThursdayWindow3EndMinute (RW)
+channel2ThursdayWindow4StartMinute (RW)
+channel2ThursdayWindow4EndMinute (RW)
+channel2FridayWindow1StartMinute (RW)
+channel2FridayWindow1EndMinute (RW)
+channel2FridayWindow2StartMinute (RW)
+channel2FridayWindow2EndMinute (RW)
+channel2FridayWindow3StartMinute (RW)
+channel2FridayWindow3EndMinute (RW)
+channel2FridayWindow4StartMinute (RW)
+channel2FridayWindow4EndMinute (RW)
+channel2SaturdayWindow1StartMinute (RW)
+channel2SaturdayWindow1EndMinute (RW)
+channel2SaturdayWindow2StartMinute (RW)
+channel2SaturdayWindow2EndMinute (RW)
+channel2SaturdayWindow3StartMinute (RW)
+channel2SaturdayWindow3EndMinute (RW)
+channel2SaturdayWindow4StartMinute (RW)
+channel2SaturdayWindow4EndMinute (RW)
+channel2SundayWindow1StartMinute (RW)
+channel2SundayWindow1EndMinute (RW)
+channel2SundayWindow2StartMinute (RW)
+channel2SundayWindow2EndMinute (RW)
+channel2SundayWindow3StartMinute (RW)
+channel2SundayWindow3EndMinute (RW)
+channel2SundayWindow4StartMinute (RW)
+channel2SundayWindow4EndMinute (RW)

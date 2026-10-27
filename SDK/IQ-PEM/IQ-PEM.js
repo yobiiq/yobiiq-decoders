@@ -1,0 +1,964 @@
+/**
+ *__   _____  ____ ___ ___ ___
+ *\ \ / / _ \| __ )_ _|_ _/ _ \
+ * \ V / | | |  _ \| | | | | | |
+ * | || |_| | |_) | | | | |_| |
+ * |_| \___/|____/___|___\__\_\
+ *
+ *
+ * @brief This YOBIIQ JS payload decoder/encoder follows the LoRa Alliance Payload Codec API specs (TS013-1.0.0).
+ *
+ * @compatibility ChirpStack v3 (Decode/Encode, otto ES5 engine), ChirpStack v4 (decodeUplink/encodeDownlink,
+ *                QuickJS), TTN, TTI, LORIOT, ThingPark and any LNS that follows LoRa Alliance API specs.
+ *                Written in ES3 syntax without ES5+ library calls, console or global state between calls.
+ *
+ * @author      Fostin Kpodar <f.kpodar@yobiiq.com>
+ * @version     1.1.0
+ * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
+ *
+ * @release     15-04-2026
+ * @update      05-10-2026
+ *
+ * @product     26000A   IQ PEM (Smart 3PH Electricity Meter)
+ *
+ * @firmware    IQ PEM v1.1.0
+ *
+ */
+
+
+// Added to every decoded uplink, without overwriting decoded fields.
+var CODEC_INFO = {
+    codecVersion: "1.1.0",
+    genericModel: "IQ PEM",
+    productCode: "26000A",
+    manufacturer: "YOBIIQ B.V."
+};
+
+var FPORT = {
+    MAC: 0,
+    PERIODIC_MIN: 1,
+    PERIODIC_MAX: 10,
+    ALARM: 11,
+    MAX_DEMAND_CONFIG: 11,
+    MAX_DEMAND: 20,
+    GENERIC: 50,
+    READING: 100,
+    FUOTA_MIN: 200,
+    FUOTA_MAX: 202,
+    FMP: 203
+};
+
+var MESSAGES = {
+    MAC: "MAC COMMAND RECEIVED",
+    FUOTA: "FUOTA DATA RECEIVED",
+    FMP: "FIRMWARE MANAGEMENT DATA RECEIVED",
+    DOWNLINK_SUCCESS: "DOWNLINK COMMAND SUCCEEDED",
+    DOWNLINK_FAILURE: "DOWNLINK COMMAND FAILED",
+    FPORT_INCORRECT: "Incorrect fPort",
+    CMD_INVALID: "Invalid command",
+    CMD_REGISTER_NOT_FOUND: "Register not found in the device registers",
+    CMD_REGISTER_NOT_WRITABLE: "Register not writable",
+    CMD_REGISTER_NOT_READABLE: "Register not readable",
+    CMD_REGISTER_NUMBER_INVALID: "Invalid number of registers",
+    CMD_DATA_INVALID: "Invalid data in the command",
+    CMD_FPORT_INVALID: "Invalid fPort in the command",
+    CMD_TOO_LONG: "Command too long"
+};
+
+var LIMITS = {
+    COMMAND_REGISTERS: 10,      // registers per Config, Reading or Periodic command
+    STRING_LENGTH: 15,          // firmware rejects strings longer than 15 characters
+    DOWNLINK_SIZE: 64           // firmware drops longer downlinks without a status uplink
+};
+
+var NORMAL_ALARM = {0: "NORMAL", 1: "ALARM"};
+var SERIAL_PARITY_VALUES = {0: "NONE", 1: "ODD", 2: "EVEN"};
+var SERIAL_BAUD_RATES = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+
+/*
+ * Register table: one entry per register address, used to decode uplinks AND
+ * to encode downlinks, so the two directions can never disagree on an address.
+ *
+ *   NAME        key in the decoded object, Param / Registers name in commands
+ *   TYPE        U8 U16 U24 U32 I8 I16 I32 F32 F64 STR VER VER3 ENUM FLAGS STRUCT
+ *   RW          what the firmware accepts over LoRaWAN: "R", "W", "RW" or "" (uplink only)
+ *   RESOLUTION  decoded value = raw * RESOLUTION (and raw = value / RESOLUTION when encoding)
+ *   DECIMALS    rounding of scaled and float values (default 3, F64 default 6)
+ *   VALUES      ENUM labels by raw value; unknown values decode as "UNKNOWN (<raw>)"
+ *   FLAGS       FLAGS bits: [{NAME: ..., BIT: n, VALUES: [label when 0, label when 1]}]
+ *   SIZE        byte size of FLAGS and STRUCT registers
+ *   DECODE      STRUCT decoder: function (bytes, index) returning the decoded value
+ *   MIN, MAX    accepted range of written values (in decoded units; ENUM: raw values); STR: MAX length
+ *   ALLOWED     list of the only accepted written values (for example serial baud rates)
+ *   MAX_DEMAND  true for the registers a MaxDemand command may select
+ */
+var REGISTERS = {
+
+    /* Uplink header of periodic, alarm and max demand uplinks (not a register) */
+    "0xFF01": {NAME: "dataloggerTimestamp", TYPE: "U32", RW: ""},
+
+    /* Generic registers, common to every YOBIIQ SDK device */
+    "0xFF32": {NAME: "buildingName", TYPE: "STR", RW: "RW"},
+    "0xFF33": {NAME: "buildingRoom", TYPE: "STR", RW: "RW"},
+    "0xFF34": {NAME: "deviceName", TYPE: "STR", RW: "RW"},
+    "0xFF64": {NAME: "deviceStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "NORMAL_MODE", 1: "SPECIAL_MODE"}},
+    "0xFF65": {NAME: "manufacturer", TYPE: "STR", RW: "R"},
+    "0xFF66": {NAME: "originalEquipmentManufacturer", TYPE: "STR", RW: "R"},
+    "0xFF67": {NAME: "deviceModel", TYPE: "STR", RW: "R"},
+    "0xFF68": {NAME: "deviceSerialNumber", TYPE: "U32", RW: "R"},
+    "0xFF69": {NAME: "firmwareVersion", TYPE: "VER", RW: "R"},
+    "0xFF6A": {NAME: "hardwareVersion", TYPE: "VER", RW: "R"},
+    "0xFF6B": {NAME: "externalPowerStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "BATTERY_POWER", 1: "MAINS_POWER"}},
+    "0xFF6C": {NAME: "batteryVoltage", TYPE: "U8", RW: "R", RESOLUTION: 0.1, DECIMALS: 1},
+    "0xFF6D": {NAME: "batteryPercentage", TYPE: "U8", RW: "R"},
+    "0xFF6F": {NAME: "rebootDevice", TYPE: "U8", RW: "W", MIN: 1, MAX: 1},
+    "0xFF78": {NAME: "internalCircuitTemperatureAlarm", TYPE: "ENUM", RW: "R", VALUES: {0: "NORMAL", 1: "ALARM"}},
+    "0xFF79": {NAME: "internalCircuitTemperatureNumberOfAlarms", TYPE: "U32", RW: "R"},
+    "0xFF7A": {NAME: "internalCircuitTemperature", TYPE: "I16", RW: "R", RESOLUTION: 0.01, DECIMALS: 2},
+    "0xFF7B": {NAME: "internalCircuitHumidity", TYPE: "U8", RW: "R"},
+    "0xFF82": {NAME: "ambientTemperature", TYPE: "I16", RW: "R", RESOLUTION: 0.01, DECIMALS: 2},
+    "0xFF83": {NAME: "ambientHumidity", TYPE: "U8", RW: "R"},
+    "0xFF95": {NAME: "restartLoRaWAN", TYPE: "U8", RW: "W", MIN: 1, MAX: 1},
+    "0xFF96": {NAME: "joinStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "OFFLINE", 1: "ONLINE"}},
+    "0xFF97": {NAME: "radioModule", TYPE: "STR", RW: "R"},
+    "0xFF98": {NAME: "lorawanRegion", TYPE: "ENUM", RW: "R", VALUES: {1: "EU868", 2: "AS923-1", 3: "US915",
+        4: "AU915", 5: "CN470", 6: "WW2G4", 7: "AS923-2", 8: "AS923-3", 9: "IN865", 10: "KR920", 11: "RU864",
+        12: "CN470-RP1.0", 13: "AS923-4"}},
+    "0xFF99": {NAME: "lorawanVersion", TYPE: "VER3", RW: "R"},
+    "0xFF9D": {NAME: "applicationPort", TYPE: "U8", RW: "R"},
+    "0xFF9E": {NAME: "joinType", TYPE: "ENUM", RW: "R", VALUES: {1: "OTAA"}},
+    "0xFF9F": {NAME: "deviceClass", TYPE: "ENUM", RW: "RW", VALUES: {0: "CLASS_A", 1: "CLASS_B", 2: "CLASS_C"}},
+    "0xFFA0": {NAME: "adr", TYPE: "ENUM", RW: "RW", VALUES: {0: "DISABLED", 1: "ENABLED"}},
+    "0xFFA1": {NAME: "sf", TYPE: "ENUM", RW: "RW", VALUES: {0: "SF12BW125", 1: "SF11BW125", 2: "SF10BW125",
+        3: "SF9BW125", 4: "SF8BW125", 5: "SF7BW125", 6: "SF7BW250"}},
+    "0xFFA2": {NAME: "adrProfile", TYPE: "ENUM", RW: "RW", VALUES: {0: "NETWORK_CONTROLLED",
+        1: "MOBILE_LONG_RANGE", 2: "MOBILE_LOW_POWER"}},
+    "0xFFA3": {NAME: "radioMode", TYPE: "ENUM", RW: "RW", VALUES: {0: "LORAWAN", 1: "IQ_D2D",
+        2: "LORAWAN_AND_IQ_D2D"}},
+    "0xFFA4": {NAME: "numberOfJoinAttempts", TYPE: "U8", RW: "RW"},
+    "0xFFA5": {NAME: "linkCheckTimeframe", TYPE: "U16", RW: "RW", MIN: 1},
+    "0xFFA6": {NAME: "dataRetransmission", TYPE: "ENUM", RW: "RW", VALUES: {0: "DISABLED", 1: "ENABLED"}},
+    "0xFFA7": {NAME: "lorawanWatchdogAlarm", TYPE: "ENUM", RW: "R", VALUES: {0: "NORMAL", 1: "ALARM"}},
+
+    /* Measurements */
+    "0x0000": {NAME: "voltageL1N", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0002": {NAME: "voltageL2N", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0004": {NAME: "voltageL3N", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0006": {NAME: "currentL1", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x0008": {NAME: "currentL2", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x000A": {NAME: "currentL3", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x000C": {NAME: "activePowerL1", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x000E": {NAME: "activePowerL2", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0010": {NAME: "activePowerL3", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0012": {NAME: "reactivePowerL1", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0014": {NAME: "reactivePowerL2", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0016": {NAME: "reactivePowerL3", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0018": {NAME: "apparentPowerL1", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x001A": {NAME: "apparentPowerL2", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x001C": {NAME: "apparentPowerL3", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x001E": {NAME: "powerFactorL1", TYPE: "I16", RW: "R", RESOLUTION: 0.001},
+    "0x001F": {NAME: "powerFactorL2", TYPE: "I16", RW: "R", RESOLUTION: 0.001},
+    "0x0020": {NAME: "powerFactorL3", TYPE: "I16", RW: "R", RESOLUTION: 0.001},
+    "0x0021": {NAME: "phaseAngleL1", TYPE: "I16", RW: "R", RESOLUTION: 0.01},
+    "0x0022": {NAME: "phaseAngleL2", TYPE: "I16", RW: "R", RESOLUTION: 0.01},
+    "0x0023": {NAME: "phaseAngleL3", TYPE: "I16", RW: "R", RESOLUTION: 0.01},
+    "0x0024": {NAME: "voltageL1L2", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0026": {NAME: "voltageL2L3", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0028": {NAME: "voltageL3L1", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x002A": {NAME: "frequency", TYPE: "U16", RW: "R", RESOLUTION: 0.01},
+    "0x002C": {NAME: "totalSystemActivePower", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x002E": {NAME: "totalSystemReactivePower", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0030": {NAME: "totalSystemApparentPower", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x0032": {NAME: "totalSystemPowerFactor", TYPE: "I16", RW: "R", RESOLUTION: 0.001},
+    "0x0033": {NAME: "totalSystemPhaseAngle", TYPE: "I16", RW: "R", RESOLUTION: 0.01},
+    "0x0034": {NAME: "currentL123", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x0036": {NAME: "averageVoltageLL", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0038": {NAME: "averageVoltageLN", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x003A": {NAME: "averageCurrentL", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x003C": {NAME: "currentN", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+
+    /* Demand and maximum demand */
+    "0x0066": {NAME: "totalSystemActivePowerDemand", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x0068": {NAME: "totalSystemReactivePowerDemand", TYPE: "I32", RW: "R", RESOLUTION: 0.001},
+    "0x006A": {NAME: "totalSystemApparentPowerDemand", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x006C": {NAME: "currentL1Demand", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x006E": {NAME: "currentL2Demand", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x0070": {NAME: "currentL3Demand", TYPE: "U32", RW: "R", RESOLUTION: 0.001},
+    "0x007C": {NAME: "maximumTotalSystemActivePowerDemand", TYPE: "I32", RW: "R", RESOLUTION: 0.001, MAX_DEMAND: true},
+    "0x007E": {NAME: "maximumTotalSystemReactivePowerDemand", TYPE: "I32", RW: "R", RESOLUTION: 0.001,
+        MAX_DEMAND: true},
+    "0x0080": {NAME: "maximumTotalSystemApparentPowerDemand", TYPE: "U32", RW: "R", RESOLUTION: 0.001,
+        MAX_DEMAND: true},
+    "0x0082": {NAME: "maximumCurrentL1Demand", TYPE: "U32", RW: "R", RESOLUTION: 0.001, MAX_DEMAND: true},
+    "0x0084": {NAME: "maximumCurrentL2Demand", TYPE: "U32", RW: "R", RESOLUTION: 0.001, MAX_DEMAND: true},
+    "0x0086": {NAME: "maximumCurrentL3Demand", TYPE: "U32", RW: "R", RESOLUTION: 0.001, MAX_DEMAND: true},
+
+    /* Energies (kWh, kvarh) */
+    "0x0400": {NAME: "totalImportActiveEnergy", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0402": {NAME: "totalExportActiveEnergy", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0404": {NAME: "totalActiveEnergy", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0408": {NAME: "totalImportReactiveEnergy", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x040A": {NAME: "totalExportReactiveEnergy", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x040C": {NAME: "totalReactiveEnergy", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0438": {NAME: "totalActiveEnergyRate1", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x043A": {NAME: "totalActiveEnergyRate2", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x043C": {NAME: "totalActiveEnergyRate3", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x043E": {NAME: "totalActiveEnergyRate4", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0440": {NAME: "totalImportActiveEnergyRate1", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0442": {NAME: "totalImportActiveEnergyRate2", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0444": {NAME: "totalImportActiveEnergyRate3", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0446": {NAME: "totalImportActiveEnergyRate4", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0448": {NAME: "totalExportActiveEnergyRate1", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x044A": {NAME: "totalExportActiveEnergyRate2", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x044C": {NAME: "totalExportActiveEnergyRate3", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x044E": {NAME: "totalExportActiveEnergyRate4", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0450": {NAME: "totalReactiveEnergyRate1", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0452": {NAME: "totalReactiveEnergyRate2", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0454": {NAME: "totalReactiveEnergyRate3", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0456": {NAME: "totalReactiveEnergyRate4", TYPE: "I32", RW: "R", RESOLUTION: 0.01},
+    "0x0458": {NAME: "totalImportReactiveEnergyRate1", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x045A": {NAME: "totalImportReactiveEnergyRate2", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x045C": {NAME: "totalImportReactiveEnergyRate3", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x045E": {NAME: "totalImportReactiveEnergyRate4", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0460": {NAME: "totalExportReactiveEnergyRate1", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0462": {NAME: "totalExportReactiveEnergyRate2", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0464": {NAME: "totalExportReactiveEnergyRate3", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+    "0x0466": {NAME: "totalExportReactiveEnergyRate4", TYPE: "U32", RW: "R", RESOLUTION: 0.01},
+
+    /* Electrical installation labels */
+    "0xEE3C": {NAME: "electricalCabinet", TYPE: "STR", RW: "RW"},
+    "0xEE3D": {NAME: "electricalGroup", TYPE: "STR", RW: "RW"},
+
+    /* Serial link to the meter */
+    "0xFEA8": {NAME: "serialWatchdogAlarm", TYPE: "ENUM", RW: "R", VALUES: NORMAL_ALARM},
+    "0xFEA9": {NAME: "serialStopBits", TYPE: "U8", RW: "RW", ALLOWED: [1, 2]},    // 1.5 stop bits (3) is not supported
+    "0xFEAA": {NAME: "serialDataWidth", TYPE: "U8", RW: "RW", ALLOWED: [5, 6, 7, 8]},
+    "0xFEAB": {NAME: "serialParity", TYPE: "ENUM", RW: "RW", VALUES: SERIAL_PARITY_VALUES},
+    "0xFEAC": {NAME: "serialBaudRate", TYPE: "U32", RW: "RW", ALLOWED: SERIAL_BAUD_RATES},
+    "0xFEAD": {NAME: "serialModbusExecutionInterval", TYPE: "U16", RW: "RW", MIN: 50, MAX: 60000},
+    "0xFEAE": {NAME: "serialModbusResponseTimeout", TYPE: "U16", RW: "RW", MIN: 10, MAX: 60000},
+    "0xFEAF": {NAME: "serialModbusMaxRetries", TYPE: "U8", RW: "RW", MIN: 1, MAX: 5},
+    "0xFEB0": {NAME: "serialModbusSlaveId", TYPE: "U8", RW: "RW", MIN: 1, MAX: 247}
+};
+
+var TYPE_SIZES = {U8: 1, U16: 2, U24: 3, U32: 4, I8: 1, I16: 2, I32: 4, F32: 4, F64: 8, VER: 2, VER3: 3, ENUM: 1};
+
+// Register name -> "0xABCD" key, for the encoder only. registerKeys() builds it on first use:
+// ChirpStack v3 parses and runs the whole codec for every uplink within a 100 ms limit, so
+// uplinks skip this work. It only caches the constant REGISTERS table.
+var REGISTER_KEYS = null;
+
+// Periodic uplink configuration fields (downlink on fPorts 1-10).
+var PERIODIC = {
+    CHANNEL: 0xFF,
+    INTERVAL: 0x14,
+    MODE: 0x15,
+    STATUS: 0x16,
+    REGISTERS: 0x17
+};
+
+var READING = {
+    CHANNEL: 0xFF,
+    TYPE: 0xCC
+};
+
+// Max demand configuration fields (downlink on fPort 11).
+var MAX_DEMAND_CONFIG = {
+    CHANNEL: 0xFF,
+    REGISTER: 0x40,
+    MODE: 0x41,
+    STATUS: 0x42,
+    DATALOGGER_INTERVAL: 0x43,
+    UPLINK_INTERVAL: 0x44
+};
+
+// fPort used by encodeDownlink() when the command has none.
+var COMMAND_FPORTS = {
+    Config: FPORT.GENERIC,
+    Reading: FPORT.READING,
+    MaxDemand: FPORT.MAX_DEMAND_CONFIG
+};
+
+/************************************************************************************************************/
+/* Uplink decoding                                                                                          */
+/************************************************************************************************************/
+
+function decodePayload(fPort, bytes) {
+    var result = {data: {}, errors: [], warnings: []};
+    if (fPort === FPORT.MAC) {
+        result.data.mac = MESSAGES.MAC;
+        result.data.fPort = fPort;
+    } else if (fPort >= FPORT.FUOTA_MIN && fPort <= FPORT.FUOTA_MAX) {
+        result.data.info = MESSAGES.FUOTA;
+    } else if (fPort === FPORT.FMP) {
+        decodeFmpAnswers(bytes, result);
+        result.data.info = MESSAGES.FMP;
+    } else if (bytes.length === 1 && (bytes[0] === 0 || bytes[0] === 1)) {
+        // One byte status reply to a downlink, on the fPort of the command.
+        if (bytes[0] === 0) {
+            result.data.info = MESSAGES.DOWNLINK_SUCCESS;
+        } else {
+            addWarning(result, MESSAGES.DOWNLINK_FAILURE);
+        }
+    } else if ((fPort >= FPORT.PERIODIC_MIN && fPort <= FPORT.PERIODIC_MAX) || fPort === FPORT.ALARM ||
+            fPort === FPORT.GENERIC || fPort === FPORT.READING) {
+        decodeRecords(bytes, 0, result);
+    } else if (fPort === FPORT.MAX_DEMAND) {
+        decodeMaxDemand(bytes, result);
+    } else {
+        result.data.fPort = fPort;
+        addError(result, MESSAGES.FPORT_INCORRECT);
+    }
+    for (var key in CODEC_INFO) {
+        if (has(CODEC_INFO, key) && !has(result.data, key)) {
+            result.data[key] = CODEC_INFO[key];
+        }
+    }
+    return result;
+}
+
+/* <addr16><value> records until the end of the payload. */
+function decodeRecords(bytes, index, result) {
+    while (index < bytes.length) {
+        var key = registerKey(bytes, index);
+        if (key === null) {
+            addError(result, "Incomplete register address at index " + index);
+            return;
+        }
+        if (!has(REGISTERS, key)) {
+            addError(result, "Unknown register " + key + " at index " + index);
+            return;
+        }
+        var decoded = decodeValue(bytes, index + 2, REGISTERS[key]);
+        if (decoded === null) {
+            addError(result, "Payload too short for register " + key + " at index " + index);
+            return;
+        }
+        result.data[REGISTERS[key].NAME] = decoded.value;
+        index = index + 2 + decoded.size;
+    }
+}
+
+/* FF01 <timestamp u32> then [<addr16><minutes before timestamp u16><value>]... */
+function decodeMaxDemand(bytes, result) {
+    if (registerKey(bytes, 0) !== "0xFF01" || bytes.length < 6) {
+        addError(result, "Max demand payload must start with the FF01 timestamp");
+        return;
+    }
+    var timestamp = readUint(bytes, 2, 4);
+    var measurements = [];
+    var index = 6;
+    while (index < bytes.length) {
+        var key = registerKey(bytes, index);
+        if (key === null || !has(REGISTERS, key) || index + 4 > bytes.length) {
+            addError(result, "Unknown or incomplete register " + key + " at index " + index);
+            return;
+        }
+        var minutesBefore = readUint(bytes, index + 2, 2);
+        var decoded = decodeValue(bytes, index + 4, REGISTERS[key]);
+        if (decoded === null) {
+            addError(result, "Payload too short for register " + key + " at index " + index);
+            return;
+        }
+        measurements.push({name: REGISTERS[key].NAME, data: decoded.value, ts: timestamp - minutesBefore * 60});
+        index = index + 4 + decoded.size;
+    }
+    result.data.packageTimestamp = timestamp;
+    result.data.listOfMeasurements = measurements;
+}
+
+/* LoRa Alliance FUOTA firmware management (FMP) answers, little endian. */
+function decodeFmpAnswers(bytes, result) {
+    var index = 0;
+    while (index < bytes.length) {
+        var cid = bytes[index];
+        index = index + 1;
+        if (cid === 0 && index + 2 <= bytes.length) {
+            result.data.fmpPackageVersionAns = {id: bytes[index], version: bytes[index + 1]};
+            index = index + 2;
+        } else if (cid === 1 && index + 8 <= bytes.length) {
+            result.data.fmpDevVersionAns = {
+                firmware: fmpVersion(bytes, index),
+                hardware: fmpVersion(bytes, index + 4)
+            };
+            index = index + 8;
+        } else if (cid === 2 && index + 4 <= bytes.length) {
+            result.data.fmpDevRebootTimeAns = readUintLE(bytes, index, 4);
+            index = index + 4;
+        } else if (cid === 3 && index + 3 <= bytes.length) {
+            result.data.fmpDevRebootCountdownAns = readUintLE(bytes, index, 3);
+            index = index + 3;
+        } else if (cid === 4 && index + 1 <= bytes.length) {
+            var status = bytes[index];
+            var answer = {};
+            index = index + 1;
+            if (status === 3 && index + 4 <= bytes.length) {
+                answer = fmpVersion(bytes, index);
+                index = index + 4;
+            }
+            answer.status = enumLabel({0: "NO_FIRMWARE_UPGRADE_IMAGE", 1: "FIRMWARE_UPGRADE_IMAGE_INVALID",
+                2: "FIRMWARE_UPGRADE_IMAGE_MISMATCH", 3: "FIRMWARE_UPGRADE_IMAGE_VALID"}, status);
+            result.data.fmpDevUpgradeImageAns = answer;
+        } else if (cid === 5 && index + 1 <= bytes.length) {
+            result.data.fmpDevDeleteImageAns = {
+                status: bytes[index],
+                meaning: bytes[index] === 0 ? "DELETE_IMAGE_SUCCESS" : "DELETE_IMAGE_FAILED"
+            };
+            index = index + 1;
+        } else {
+            return;
+        }
+    }
+}
+
+/* major << 24 | minor << 16 | revision, little endian on air */
+function fmpVersion(bytes, index) {
+    var answer = {
+        major: bytes[index + 3],
+        minor: bytes[index + 2],
+        revision: readUintLE(bytes, index, 2)
+    };
+    answer.version = "v" + answer.major + "." + answer.minor + "." + answer.revision;
+    return answer;
+}
+
+/* @returns {value, size} or null when the payload is too short */
+function decodeValue(bytes, index, reg) {
+    var size = valueSize(bytes, index, reg);
+    if (size < 0 || index + size > bytes.length) {
+        return null;
+    }
+    var value;
+    switch (reg.TYPE) {
+    case "U8":
+    case "U16":
+    case "U24":
+    case "U32":
+        value = scale(readUint(bytes, index, size), reg);
+        break;
+    case "I8":
+    case "I16":
+    case "I32":
+        value = scale(readInt(bytes, index, size), reg);
+        break;
+    case "F32":
+        value = scaleFloat(readFloat32(bytes, index), reg, 3);
+        break;
+    case "F64":
+        value = scaleFloat(readFloat64(bytes, index), reg, 6);
+        break;
+    case "STR":
+        value = readString(bytes, index + 1, bytes[index]);
+        break;
+    case "VER":
+        value = "v" + bytes[index] + "." + bytes[index + 1];
+        break;
+    case "VER3":
+        value = "v" + bytes[index] + "." + bytes[index + 1] + "." + bytes[index + 2];
+        break;
+    case "ENUM":
+        value = enumLabel(reg.VALUES, bytes[index]);
+        break;
+    case "FLAGS":
+        value = decodeFlags(readUint(bytes, index, size), reg.FLAGS);
+        break;
+    case "STRUCT":
+        value = reg.DECODE(bytes, index);
+        break;
+    default:
+        return null;
+    }
+    return {value: value, size: size};
+}
+
+function valueSize(bytes, index, reg) {
+    if (reg.TYPE === "STR") {
+        return index < bytes.length ? 1 + bytes[index] : -1;
+    }
+    if (reg.TYPE === "FLAGS" || reg.TYPE === "STRUCT") {
+        return reg.SIZE;
+    }
+    return has(TYPE_SIZES, reg.TYPE) ? TYPE_SIZES[reg.TYPE] : -1;
+}
+
+function decodeFlags(value, flags) {
+    var decoded = {};
+    for (var i = 0; i < flags.length; i = i + 1) {
+        var bit = Math.floor(value / Math.pow(2, flags[i].BIT)) % 2;
+        decoded[flags[i].NAME] = flags[i].VALUES[bit];
+    }
+    return decoded;
+}
+
+function enumLabel(values, raw) {
+    return has(values, raw) ? values[raw] : "UNKNOWN (" + raw + ")";
+}
+
+function scale(raw, reg) {
+    if (reg.RESOLUTION) {
+        return round(raw * reg.RESOLUTION, reg.DECIMALS === undefined ? 3 : reg.DECIMALS);
+    }
+    return raw;
+}
+
+/* NaN and infinities (meter read errors) decode as null. */
+function scaleFloat(raw, reg, defaultDecimals) {
+    if (raw === null) {
+        return null;
+    }
+    if (reg.RESOLUTION) {
+        raw = raw * reg.RESOLUTION;
+    }
+    return round(raw, reg.DECIMALS === undefined ? defaultDecimals : reg.DECIMALS);
+}
+
+function round(value, decimals) {
+    return parseFloat(value.toFixed(decimals));
+}
+
+/************************************************************************************************************/
+/* Byte helpers (no DataView, typed arrays or 32-bit shifts on values above 2^31)                          */
+/************************************************************************************************************/
+
+function registerKey(bytes, index) {
+    if (index + 2 > bytes.length) {
+        return null;
+    }
+    return "0x" + byteToHex(bytes[index]) + byteToHex(bytes[index + 1]);
+}
+
+function byteToHex(value) {
+    var hex = value.toString(16).toUpperCase();
+    return hex.length === 1 ? "0" + hex : hex;
+}
+
+function readUint(bytes, index, size) {
+    var value = 0;
+    for (var i = 0; i < size; i = i + 1) {
+        value = value * 256 + bytes[index + i];
+    }
+    return value;
+}
+
+function readUintLE(bytes, index, size) {
+    var value = 0;
+    for (var i = size - 1; i >= 0; i = i - 1) {
+        value = value * 256 + bytes[index + i];
+    }
+    return value;
+}
+
+function readInt(bytes, index, size) {
+    var value = readUint(bytes, index, size);
+    var range = Math.pow(2, 8 * size);
+    return value >= range / 2 ? value - range : value;
+}
+
+function readString(bytes, index, length) {
+    var text = "";
+    for (var i = 0; i < length; i = i + 1) {
+        text = text + String.fromCharCode(bytes[index + i]);
+    }
+    return text;
+}
+
+/* IEEE 754 single precision, big endian. */
+function readFloat32(bytes, index) {
+    var bits = readUint(bytes, index, 4);
+    var sign = bits >= 0x80000000 ? -1 : 1;
+    var exponent = Math.floor(bits / 0x800000) % 0x100;
+    var mantissa = bits % 0x800000;
+    if (exponent === 0xFF) {
+        return null;
+    }
+    if (exponent === 0) {
+        return sign * mantissa * Math.pow(2, -149);
+    }
+    return sign * (1 + mantissa / 0x800000) * Math.pow(2, exponent - 127);
+}
+
+/* IEEE 754 double precision, big endian. */
+function readFloat64(bytes, index) {
+    var high = readUint(bytes, index, 4);
+    var low = readUint(bytes, index + 4, 4);
+    var sign = high >= 0x80000000 ? -1 : 1;
+    var exponent = Math.floor(high / 0x100000) % 0x800;
+    var mantissa = (high % 0x100000) * 0x100000000 + low;
+    if (exponent === 0x7FF) {
+        return null;
+    }
+    if (exponent === 0) {
+        return sign * mantissa * Math.pow(2, -1074);
+    }
+    return sign * (1 + mantissa / Math.pow(2, 52)) * Math.pow(2, exponent - 1023);
+}
+
+function writeUint(out, value, size) {
+    for (var i = size - 1; i >= 0; i = i - 1) {
+        out.push(Math.floor(value / Math.pow(2, 8 * i)) % 256);
+    }
+}
+
+/************************************************************************************************************/
+/* Downlink encoding                                                                                        */
+/************************************************************************************************************/
+
+/*
+ * Commands (see IQ-PEM.txt for examples):
+ *   {"fPort": 50, "Type": "Config", "Config": [{"Param": "adr", "Value": 1}]}
+ *   {"fPort": 100, "Type": "Reading", "Reading": ["adr", "sf"]}
+ *   {"fPort": 1-10, "Type": "Periodic", "Periodic": {"UplinkInterval": 15, "Mode": 0, "Status": 1,
+ *       "Registers": ["voltageL1N"]}}      (any subset of the four fields)
+ *   {"fPort": 11, "Type": "MaxDemand", "MaxDemand": {"Register": "maximumCurrentL1Demand", "Mode": 0,
+ *       "Status": 1, "DataloggerInterval": 5, "UplinkInterval": 30}}      (all five fields)
+ */
+function encodeCommand(fPort, command) {
+    var result = {bytes: [], fPort: fPort, errors: [], warnings: []};
+    if (!command || typeof command !== "object" || !has(command, "Type")) {
+        addError(result, MESSAGES.CMD_INVALID + ": please add Type to the command");
+    } else if (command.Type === "Config") {
+        if (fPort !== FPORT.GENERIC) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodeConfig(command.Config, result);
+        }
+    } else if (command.Type === "Reading") {
+        if (fPort !== FPORT.READING) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodeReading(command.Reading, result);
+        }
+    } else if (command.Type === "Periodic") {
+        if (fPort < FPORT.PERIODIC_MIN || fPort > FPORT.PERIODIC_MAX) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodePeriodic(command.Periodic, result);
+        }
+    } else if (command.Type === "MaxDemand") {
+        if (fPort !== FPORT.MAX_DEMAND_CONFIG) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodeMaxDemand(command.MaxDemand, result);
+        }
+    } else {
+        addError(result, MESSAGES.CMD_INVALID + ": please check " + command.Type + " in the command");
+    }
+    if (result.errors.length === 0 && result.bytes.length > LIMITS.DOWNLINK_SIZE) {
+        addError(result, MESSAGES.CMD_TOO_LONG + ": " + result.bytes.length + " bytes, the device accepts at most " +
+            LIMITS.DOWNLINK_SIZE);
+    }
+    if (result.errors.length > 0) {
+        result.bytes = [];
+    }
+    return result;
+}
+
+function encodeConfig(list, result) {
+    if (!isArray(list) || list.length < 1 || list.length > LIMITS.COMMAND_REGISTERS) {
+        addError(result, MESSAGES.CMD_REGISTER_NUMBER_INVALID + ": please check Config in the command");
+        return;
+    }
+    for (var i = 0; i < list.length; i = i + 1) {
+        var item = list[i];
+        if (!item || typeof item !== "object" || !has(item, "Param") || !has(item, "Value")) {
+            addError(result, MESSAGES.CMD_INVALID + ": please add Param and Value to each object in the Config array");
+            return;
+        }
+        var key = lookupRegister(item.Param, "W", result);
+        if (key === null) {
+            return;
+        }
+        var value = encodeValue(REGISTERS[key], item.Value);
+        if (value === null) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check " + item.Param + " in the command");
+            return;
+        }
+        writeUint(result.bytes, parseInt(key, 16), 2);
+        for (var j = 0; j < value.length; j = j + 1) {
+            result.bytes.push(value[j]);
+        }
+    }
+}
+
+function encodeReading(list, result) {
+    if (!isArray(list) || list.length < 1 || list.length > LIMITS.COMMAND_REGISTERS) {
+        addError(result, MESSAGES.CMD_REGISTER_NUMBER_INVALID + ": please check Reading in the command");
+        return;
+    }
+    result.bytes.push(READING.CHANNEL);
+    result.bytes.push(READING.TYPE);
+    for (var i = 0; i < list.length; i = i + 1) {
+        var key = lookupRegister(list[i], "R", result);
+        if (key === null) {
+            return;
+        }
+        writeUint(result.bytes, parseInt(key, 16), 2);
+    }
+}
+
+function encodePeriodic(config, result) {
+    if (!config || typeof config !== "object") {
+        addError(result, MESSAGES.CMD_INVALID + ": please add Periodic object to the command");
+        return;
+    }
+    var fields = 0;
+    if (has(config, "UplinkInterval")) {
+        // Minutes; the firmware rejects 0.
+        if (!isInterval(config.UplinkInterval)) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check UplinkInterval in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.INTERVAL);
+        writeUint(result.bytes, config.UplinkInterval, 2);
+        fields = fields + 1;
+    }
+    if (has(config, "Mode")) {
+        if (config.Mode !== 0 && config.Mode !== 1) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Mode in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.MODE, config.Mode);
+        fields = fields + 1;
+    }
+    if (has(config, "Status")) {
+        if (config.Status !== 0 && config.Status !== 1) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Status in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.STATUS, config.Status);
+        fields = fields + 1;
+    }
+    if (has(config, "Registers")) {
+        var list = config.Registers;
+        if (!isArray(list) || list.length < 1 || list.length > LIMITS.COMMAND_REGISTERS) {
+            addError(result, MESSAGES.CMD_REGISTER_NUMBER_INVALID + ": please check Registers in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.REGISTERS, list.length * 2);
+        for (var i = 0; i < list.length; i = i + 1) {
+            var key = lookupRegister(list[i], "R", result);
+            if (key === null) {
+                return;
+            }
+            writeUint(result.bytes, parseInt(key, 16), 2);
+        }
+        fields = fields + 1;
+    }
+    if (fields === 0) {
+        addError(result, MESSAGES.CMD_INVALID + ": please add UplinkInterval, Mode, Status or Registers");
+    }
+}
+
+/* The firmware only accepts the five fields together; intervals are minutes and not 0. */
+function encodeMaxDemand(config, result) {
+    if (!config || typeof config !== "object") {
+        addError(result, MESSAGES.CMD_INVALID + ": please add MaxDemand object to the command");
+        return;
+    }
+    var fields = ["Register", "Mode", "Status", "DataloggerInterval", "UplinkInterval"];
+    for (var i = 0; i < fields.length; i = i + 1) {
+        if (!has(config, fields[i])) {
+            addError(result, MESSAGES.CMD_INVALID + ": please add " + fields[i] + " to MaxDemand");
+            return;
+        }
+    }
+    var name = config.Register;
+    var keys = registerKeys();
+    if (typeof name !== "string" || !has(keys, name) || REGISTERS[keys[name]].MAX_DEMAND !== true) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Register in the command");
+        return;
+    }
+    if (config.Mode !== 0 && config.Mode !== 1) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Mode in the command");
+        return;
+    }
+    if (config.Status !== 0 && config.Status !== 1) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Status in the command");
+        return;
+    }
+    if (!isInterval(config.DataloggerInterval)) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check DataloggerInterval in the command");
+        return;
+    }
+    if (!isInterval(config.UplinkInterval)) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check UplinkInterval in the command");
+        return;
+    }
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.REGISTER);
+    writeUint(result.bytes, parseInt(keys[name], 16), 2);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.MODE, config.Mode);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.STATUS, config.Status);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.DATALOGGER_INTERVAL);
+    writeUint(result.bytes, config.DataloggerInterval, 2);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.UPLINK_INTERVAL);
+    writeUint(result.bytes, config.UplinkInterval, 2);
+}
+
+/* Interval in minutes: 1 to 65535. */
+function isInterval(value) {
+    return isInteger(value) && value >= 1 && value <= 0xFFFF;
+}
+
+/* @returns the register key, or null after adding an error */
+function lookupRegister(name, access, result) {
+    var keys = registerKeys();
+    if (typeof name !== "string" || !has(keys, name)) {
+        addError(result, MESSAGES.CMD_REGISTER_NOT_FOUND + ": please check " + name + " in the command");
+        return null;
+    }
+    var key = keys[name];
+    if (REGISTERS[key].RW.indexOf(access) < 0) {
+        addError(result, (access === "W" ? MESSAGES.CMD_REGISTER_NOT_WRITABLE : MESSAGES.CMD_REGISTER_NOT_READABLE) +
+            ": please check " + name + " in the command");
+        return null;
+    }
+    return key;
+}
+
+/* @returns the value bytes, or null when the value is not acceptable */
+function encodeValue(reg, value) {
+    var out = [];
+    if (reg.TYPE === "STR") {
+        var maxLength = reg.MAX === undefined ? LIMITS.STRING_LENGTH : reg.MAX;
+        if (typeof value !== "string" || value.length > maxLength) {
+            return null;
+        }
+        out.push(value.length);
+        for (var i = 0; i < value.length; i = i + 1) {
+            if (value.charCodeAt(i) > 0x7F) {
+                return null; // ASCII only
+            }
+            out.push(value.charCodeAt(i));
+        }
+        return out;
+    }
+    if (reg.TYPE === "ENUM") {
+        var raw = enumValue(reg.VALUES, value);
+        if (raw === null || (reg.MIN !== undefined && raw < reg.MIN) || (reg.MAX !== undefined && raw > reg.MAX)) {
+            return null;
+        }
+        out.push(raw);
+        return out;
+    }
+    if (!has(TYPE_SIZES, reg.TYPE) || (reg.TYPE.charAt(0) !== "U" && reg.TYPE.charAt(0) !== "I")) {
+        return null; // F32, F64, VER, VER3, FLAGS and STRUCT registers are not writable here
+    }
+    if (typeof value !== "number" || !isFinite(value) ||
+            (reg.MIN !== undefined && value < reg.MIN) || (reg.MAX !== undefined && value > reg.MAX) ||
+            (reg.ALLOWED !== undefined && !contains(reg.ALLOWED, value))) {
+        return null;
+    }
+    var size = TYPE_SIZES[reg.TYPE];
+    var number = reg.RESOLUTION ? Math.round(value / reg.RESOLUTION) : value;
+    var range = Math.pow(2, 8 * size);
+    var signed = reg.TYPE.charAt(0) === "I";
+    if (!isInteger(number) || number < (signed ? -range / 2 : 0) || number > (signed ? range / 2 - 1 : range - 1)) {
+        return null;
+    }
+    writeUint(out, number < 0 ? number + range : number, size);
+    return out;
+}
+
+/* ENUM writes accept the raw value (1) or its label ("ENABLED"). */
+function enumValue(values, value) {
+    if (typeof value === "number" && has(values, value)) {
+        return value;
+    }
+    for (var raw in values) {
+        if (has(values, raw) && values[raw] === value) {
+            return parseInt(raw, 10);
+        }
+    }
+    return null;
+}
+
+/************************************************************************************************************/
+/* Shared helpers                                                                                           */
+/************************************************************************************************************/
+
+function registerKeys() {
+    if (REGISTER_KEYS === null) {
+        REGISTER_KEYS = indexRegisterNames(REGISTERS);
+    }
+    return REGISTER_KEYS;
+}
+
+function indexRegisterNames(registers) {
+    var names = {};
+    for (var key in registers) {
+        if (has(registers, key)) {
+            names[registers[key].NAME] = key;
+        }
+    }
+    return names;
+}
+
+function contains(list, value) {
+    for (var i = 0; i < list.length; i = i + 1) {
+        if (list[i] === value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function has(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+// ChirpStack v3 (otto) passes the lists of the Encode() object as Go slices: they inherit
+// Array.prototype, but Object.prototype.toString reports them as "[object GoArray]".
+function isArray(value) {
+    return Object.prototype.toString.call(value) === "[object Array]" || value instanceof Array;
+}
+
+function isInteger(value) {
+    return typeof value === "number" && isFinite(value) && Math.floor(value) === value;
+}
+
+/* Errors mean "nothing decoded / nothing encoded": ChirpStack v4 drops an uplink whose errors array is not empty. */
+function addError(result, message) {
+    result.errors.push(message);
+    if (result.data) {
+        result.data.error = message;
+    }
+}
+
+function addWarning(result, message) {
+    result.warnings.push(message);
+    if (result.data) {
+        result.data.warning = message;
+    }
+}
+
+/************************************************************************************************************/
+/* Entry points                                                                                             */
+/************************************************************************************************************/
+
+// LoRa Alliance TS013: ChirpStack v4, TTN/TTI, LORIOT, ThingPark.
+// input = {bytes: [..], fPort: n, recvTime: Date, variables: {..}}
+function decodeUplink(input) {
+    return decodePayload(input.fPort, input.bytes);
+}
+
+// input = {data: {fPort: n, Type: "...", ...}, variables: {..}}; without fPort, the command Type chooses it.
+function encodeDownlink(input) {
+    var command = input.data;
+    var fPort = FPORT.GENERIC;
+    if (command && command.fPort) {
+        fPort = command.fPort;
+    } else if (command && typeof command.Type === "string" && has(COMMAND_FPORTS, command.Type)) {
+        fPort = COMMAND_FPORTS[command.Type];
+    }
+    return encodeCommand(fPort, command);
+}
+
+// ChirpStack v3 (otto): returns the decoded object.
+function Decode(fPort, bytes, variables) {
+    return decodePayload(fPort, bytes).data;
+}
+
+// ChirpStack v3 (otto): fPort is the downlink queue item's fPort; returns the byte array.
+function Encode(fPort, obj, variables) {
+    return encodeCommand(fPort, obj).bytes;
+}

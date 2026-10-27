@@ -1,0 +1,274 @@
+1. Restart the LoRaWAN interface (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+        }
+    ]
+}
+
+
+2. Configure ADR and SF (2 parameters, fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "adr",
+            "Value": 0
+        },
+        {
+            "Param": "sf",
+            "Value": "SF9BW125"
+        }
+    ]
+}
+
+- Enum values are given as a number (3) or as the label shown in uplinks ("SF9BW125").
+- At most 10 parameters, and at most 64 bytes once encoded (a 15 character string takes 18).
+- Strings are ASCII, at most 15 characters.
+
+
+3. Read device registers (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "firmwareVersion",
+        "adr",
+        "sf",
+        "radioMode",
+        "numberOfJoinAttempts",
+        "linkCheckTimeframe",
+        "dataRetransmission",
+        "lorawanWatchdogAlarm"
+    ]
+}
+
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer comes as an uplink on fPort 100.
+
+
+4. Configure a 15 min periodic unconfirmed uplink on fPort 2
+
+{
+    "fPort": 2,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 15,
+        "Mode": 0,
+        "Status": 1,
+        "Registers": [
+            "electricityPowerDelivered",
+            "electricityPowerReceived",
+            "voltageL1",
+            "voltageL2",
+            "voltageL3",
+            "currentL1",
+            "currentL2",
+            "currentL3"
+        ]
+    }
+}
+
+- fPort 1 to 10, one configuration per fPort. Any subset of the four fields may be sent.
+- UplinkInterval: minutes, 1 to 65535
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = fPort disabled, 1 = fPort enabled
+- Registers: at most 10 readable registers
+
+
+5. LUX profile: meter decryption key and decryption function (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "dsmrProfile",
+            "Value": "LUX"
+        },
+        {
+            "Param": "decryptionKey",
+            "Value": "00112233445566778899AABBCCDDEEFF"
+        },
+        {
+            "Param": "decryptionFunction",
+            "Value": 1
+        }
+    ]
+}
+
+- dsmrProfile: 0 = NL (Netherlands, DSMR 4 and 5, 115200 baud), 1 = LUX (Luxembourg, Smarty,
+  115200 baud), 2 = NL_LEGACY (Netherlands, DSMR 2.2 and 3.0, 9600 baud 7E1, telegrams without
+  CRC, timestamp or P1 version). Factory value NL.
+- decryptionKey: the 16 byte key of the meter given by the grid operator, as 32 hexadecimal digits.
+  It can be written over LoRaWAN but is never sent in an uplink (it cannot be read). Factory value
+  all zeros.
+- decryptionFunction: 0 = plain text telegrams, 1 = encrypted telegrams (factory value). Used by the
+  LUX profile only, the NL and NL_LEGACY profiles always read plain text telegrams.
+- The new settings apply once the whole command is processed, whatever the order of the parameters.
+  A change of the profile, of the key, or of the decryption function with the LUX profile clears the
+  values of the last telegram until the next valid one.
+
+
+6. Serial watchdog (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "serialWatchdogFunction",
+            "Value": "ENABLED"
+        },
+        {
+            "Param": "serialWatchdogTimeout",
+            "Value": 30
+        }
+    ]
+}
+
+- serialWatchdogFunction: 0 = DISABLED, 1 = ENABLED (factory value).
+- serialWatchdogTimeout: minutes, 1 to 1440 (factory value 15).
+- serialWatchdogAlarm reads ALARM when no valid telegram came for the timeout. Each change of the
+  alarm is sent as an alarm uplink on fPort 11.
+
+
+7. Read the P1 port state (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "dsmrProfile",
+        "decryptionFunction",
+        "telegramStatus",
+        "telegramCount",
+        "telegramErrorCount",
+        "meterIdentification",
+        "serialWatchdogAlarm"
+    ]
+}
+
+- telegramStatus: NONE, VALID, CRC_ERROR, FRAME_ERROR or DECRYPTION_ERROR (last telegram).
+- Telegram values are the ones of the last valid telegram. A value the meter does not report is
+  left out of the answer and of the periodic uplinks.
+- Energy in Wh, power in W, voltage in V, current in A, reactive energy in varh, reactive power in
+  var, activeThreshold in kVA, timestamps in UTC Unix time. lastReadingOnChannel<N> gives the time
+  of the M-Bus reading and its value in the meter unit (m3 for gas and water).
+
+
+******************  List of registers ********************
+(R) readable, (W) writable, (RW) both. Values that only appear in uplinks (alarms) are not listed.
+
+buildingName (RW)
+buildingRoom (RW)
+deviceName (RW)
+deviceStatus (R)
+manufacturer (R)
+originalEquipmentManufacturer (R)
+deviceModel (R)
+deviceSerialNumber (R)
+firmwareVersion (R)
+hardwareVersion (R)
+externalPowerStatus (R)
+batteryVoltage (R)
+batteryPercentage (R)
+rebootDevice (W)
+internalCircuitTemperatureAlarm (R)
+internalCircuitTemperatureNumberOfAlarms (R)
+internalCircuitTemperature (R)
+internalCircuitHumidity (R)
+ambientTemperature (R)
+ambientHumidity (R)
+restartLoRaWAN (W)
+joinStatus (R)
+radioModule (R)
+lorawanRegion (R)
+lorawanVersion (R)
+applicationPort (R)
+joinType (R)
+deviceClass (RW)
+adr (RW)
+sf (RW)
+adrProfile (RW)
+radioMode (RW)
+numberOfJoinAttempts (RW)
+linkCheckTimeframe (RW)
+dataRetransmission (RW)
+lorawanWatchdogAlarm (R)
+dsmrProfile (RW)
+telegramStatus (R)
+telegramCount (R)
+serialWatchdogFunction (RW)
+serialWatchdogTimeout (RW)
+serialWatchdogAlarm (R)
+meterIdentification (R)
+telegramErrorCount (R)
+decryptionKey (W)
+decryptionFunction (RW)
+p1Version (R)
+telegramTimestamp (R)
+equipmentIdentifier (R)
+electricityDeliveredToClient (R)
+electricityDeliveredToClientT1 (R)
+electricityDeliveredToClientT2 (R)
+electricityDeliveredByClient (R)
+electricityDeliveredByClientT1 (R)
+electricityDeliveredByClientT2 (R)
+tariffIndicator (R)
+electricityPowerDelivered (R)
+electricityPowerReceived (R)
+numberOfPowerFailures (R)
+numberOfLongPowerFailures (R)
+powerFailureEventLog (R)
+numberOfVoltageSagsL1 (R)
+numberOfVoltageSagsL2 (R)
+numberOfVoltageSagsL3 (R)
+numberOfVoltageSwellsL1 (R)
+numberOfVoltageSwellsL2 (R)
+numberOfVoltageSwellsL3 (R)
+voltageL1 (R)
+voltageL2 (R)
+voltageL3 (R)
+currentL1 (R)
+currentL2 (R)
+currentL3 (R)
+activePowerDeliveredL1 (R)
+activePowerDeliveredL2 (R)
+activePowerDeliveredL3 (R)
+activePowerReceivedL1 (R)
+activePowerReceivedL2 (R)
+activePowerReceivedL3 (R)
+deviceTypeOnChannel1 (R)
+equipmentIdentifierChannel1 (R)
+lastReadingOnChannel1 (R)
+deviceTypeOnChannel2 (R)
+equipmentIdentifierChannel2 (R)
+lastReadingOnChannel2 (R)
+deviceTypeOnChannel3 (R)
+equipmentIdentifierChannel3 (R)
+lastReadingOnChannel3 (R)
+deviceTypeOnChannel4 (R)
+equipmentIdentifierChannel4 (R)
+lastReadingOnChannel4 (R)
+totalImportedReactiveEnergy (R)
+totalExportedReactiveEnergy (R)
+totalImportedReactivePower (R)
+totalExportedReactivePower (R)
+importedReactivePowerL1 (R)
+importedReactivePowerL2 (R)
+importedReactivePowerL3 (R)
+exportedReactivePowerL1 (R)
+exportedReactivePowerL2 (R)
+exportedReactivePowerL3 (R)
+activeThreshold (R)
+breakerControlState (R)
+fuseSupervisionThresholdL1 (R)

@@ -1,0 +1,191 @@
+1. Restart the LoRaWAN interface (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+        }
+    ]
+}
+
+
+2. Configure ADR and SF (2 parameters, fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "adr",
+            "Value": 0
+        },
+        {
+            "Param": "sf",
+            "Value": "SF9BW125"
+        }
+    ]
+}
+
+- Enum values are given as a number (3) or as the label shown in uplinks ("SF9BW125").
+- At most 10 parameters, and at most 64 bytes once encoded (a 15 character string takes 18).
+- Strings are ASCII, at most 15 characters.
+
+
+3. Read device registers (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "firmwareVersion",
+        "adr",
+        "sf",
+        "radioMode",
+        "numberOfJoinAttempts",
+        "linkCheckTimeframe",
+        "dataRetransmission",
+        "lorawanWatchdogAlarm"
+    ]
+}
+
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer comes as an uplink on fPort 100.
+
+
+4. Configure a daily uplink of the volume and the alarms on fPort 2
+
+{
+    "fPort": 2,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 1440,
+        "Mode": 0,
+        "Status": 1,
+        "Registers": [
+            "cumulativeVolume",
+            "waterMeterAlarms"
+        ]
+    }
+}
+
+- fPort 1 to 10, one configuration per fPort. Any subset of the four fields may be sent.
+- UplinkInterval: minutes, 1 to 65535
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = fPort disabled, 1 = fPort enabled
+- Registers: at most 10 readable registers
+- Gas meters: use cumulativeBaseVolume, cumulativeMeasuredVolume and gasMeterAlarms instead.
+
+
+5. Read the water meter measurements (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "cumulativeVolume",
+        "instantaneousFlowRate",
+        "instantaneousTemperature"
+    ]
+}
+
+- Volumes are in m3, flow rates in m3/h, temperatures in degrees Celsius.
+- The values are the meter data as last received from the meter electronics.
+
+
+6. Read the gas meter measurements and alarms (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "cumulativeBaseVolume",
+        "cumulativeMeasuredVolume",
+        "pipelinePressure",
+        "speedOfSound",
+        "gasMeterAlarms"
+    ]
+}
+
+- Volumes are in m3, pipelinePressure in kPa, speedOfSound in m/s.
+- A water meter leaves the gas meter registers out of its answer, and a gas meter
+  leaves out cumulativeVolume and waterMeterAlarms.
+
+
+7. Read the meter information and batteries (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "meterFirmwareVersion",
+        "meterModel",
+        "meterSerialNumber",
+        "meteringBatteryStatus",
+        "meteringBatteryVoltage",
+        "communicationBatteryStatus",
+        "communicationBatteryVoltage"
+    ]
+}
+
+- Battery voltages are in V; battery status is OK or LOW_OR_FAULT.
+- The meter registers are read only: a Config command on them is rejected.
+
+
+******************  List of registers ********************
+(R) readable, (W) writable, (RW) both. Values that only appear in uplinks (alarms) are not listed.
+
+buildingName (RW)
+buildingRoom (RW)
+deviceName (RW)
+deviceStatus (R)
+manufacturer (R)
+originalEquipmentManufacturer (R)
+deviceModel (R)
+deviceSerialNumber (R)
+firmwareVersion (R)
+hardwareVersion (R)
+externalPowerStatus (R)
+batteryVoltage (R)
+batteryPercentage (R)
+rebootDevice (W)
+internalCircuitTemperatureAlarm (R)
+internalCircuitTemperatureNumberOfAlarms (R)
+internalCircuitTemperature (R)
+internalCircuitHumidity (R)
+ambientTemperature (R)
+ambientHumidity (R)
+restartLoRaWAN (W)
+joinStatus (R)
+radioModule (R)
+lorawanRegion (R)
+lorawanVersion (R)
+applicationPort (R)
+joinType (R)
+deviceClass (RW)
+adr (RW)
+sf (RW)
+adrProfile (RW)
+radioMode (RW)
+numberOfJoinAttempts (RW)
+linkCheckTimeframe (RW)
+dataRetransmission (RW)
+lorawanWatchdogAlarm (R)
+meterFirmwareVersion (R)
+meterModel (R)
+meterSerialNumber (R)
+meteringBatteryStatus (R)
+meteringBatteryVoltage (R)
+communicationBatteryStatus (R)
+communicationBatteryVoltage (R)
+cumulativeVolume (R, water meter)
+instantaneousFlowRate (R)
+instantaneousTemperature (R)
+waterMeterAlarms (R, water meter)
+gasMeterAlarms (R, gas meter)
+cumulativeBaseVolume (R, gas meter)
+cumulativeMeasuredVolume (R, gas meter)
+pipelinePressure (R, gas meter)
+speedOfSound (R, gas meter)

@@ -1,0 +1,193 @@
+1. Restart the LoRaWAN interface (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+        }
+    ]
+}
+
+
+2. Configure ADR and SF (2 parameters, fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "adr",
+            "Value": 0
+        },
+        {
+            "Param": "sf",
+            "Value": "SF9BW125"
+        }
+    ]
+}
+
+- Enum values are given as a number (3) or as the label shown in uplinks ("SF9BW125").
+- At most 10 parameters, and at most 64 bytes once encoded (a 15 character string takes 18).
+- Strings are ASCII, at most 15 characters.
+
+
+3. Read device registers (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "firmwareVersion",
+        "adr",
+        "sf",
+        "radioMode",
+        "numberOfJoinAttempts",
+        "linkCheckTimeframe",
+        "dataRetransmission",
+        "lorawanWatchdogAlarm"
+    ]
+}
+
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer comes as an uplink on fPort 100.
+
+
+4. Configure a 15 min periodic unconfirmed uplink on fPort 2
+
+{
+    "fPort": 2,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 15,
+        "Mode": 0,
+        "Status": 1,
+        "Registers": [
+            "input1Voltage",
+            "input2Voltage",
+            "input3Voltage",
+            "input4Voltage",
+            "input1Current",
+            "input2Current",
+            "input3Current",
+            "input4Current"
+        ]
+    }
+}
+
+- fPort 1 to 10, one configuration per fPort. Any subset of the four fields may be sent.
+- UplinkInterval: minutes, 1 to 65535
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = fPort disabled, 1 = fPort enabled
+- Registers: at most 10 readable registers
+
+
+5. Input switch thresholds of input 1 (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "input1VoltageThreshold",
+            "Value": 0.05
+        },
+        {
+            "Param": "input1CurrentThreshold",
+            "Value": 3.5
+        }
+    ]
+}
+
+- input<N>VoltageThreshold: V, 0 to 1 (factory value 0.05).
+- input<N>CurrentThreshold: mA, 0 to 4 (factory value 3.5).
+- input<N>SwitchPosition reads VOLTAGE when input<N>Voltage is at or above its threshold and
+  input<N>Current below its threshold, CURRENT in the opposite case, UNKNOWN otherwise.
+- A change of position is sent as an alarm uplink on fPort 11 at the next measurement (at most 30 s).
+
+
+6. Read input 1 (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "input1Voltage",
+        "input1Current",
+        "input1SwitchPosition"
+    ]
+}
+
+- Voltages are in V and currents in mA. The device measures the input when it is read.
+- input<N>VoltageRaw and input<N>CurrentRaw give the ADC counts (normally 0 to 32767).
+
+
+******************  List of registers ********************
+(R) readable, (W) writable, (RW) both. Values that only appear in uplinks (alarms) are not listed.
+
+buildingName (RW)
+buildingRoom (RW)
+deviceName (RW)
+deviceStatus (R)
+manufacturer (R)
+originalEquipmentManufacturer (R)
+deviceModel (R)
+deviceSerialNumber (R)
+firmwareVersion (R)
+hardwareVersion (R)
+externalPowerStatus (R)
+batteryVoltage (R)
+batteryPercentage (R)
+rebootDevice (W)
+internalCircuitTemperatureAlarm (R)
+internalCircuitTemperatureNumberOfAlarms (R)
+internalCircuitTemperature (R)
+internalCircuitHumidity (R)
+ambientTemperature (R)
+ambientHumidity (R)
+restartLoRaWAN (W)
+joinStatus (R)
+radioModule (R)
+lorawanRegion (R)
+lorawanVersion (R)
+applicationPort (R)
+joinType (R)
+deviceClass (RW)
+adr (RW)
+sf (RW)
+adrProfile (RW)
+radioMode (RW)
+numberOfJoinAttempts (RW)
+linkCheckTimeframe (RW)
+dataRetransmission (RW)
+lorawanWatchdogAlarm (R)
+input1VoltageRaw (R)
+input1Voltage (R)
+input2VoltageRaw (R)
+input2Voltage (R)
+input3VoltageRaw (R)
+input3Voltage (R)
+input4VoltageRaw (R)
+input4Voltage (R)
+input1CurrentRaw (R)
+input1Current (R)
+input2CurrentRaw (R)
+input2Current (R)
+input3CurrentRaw (R)
+input3Current (R)
+input4CurrentRaw (R)
+input4Current (R)
+input1SwitchPosition (R)
+input1VoltageThreshold (RW)
+input1CurrentThreshold (RW)
+input2SwitchPosition (R)
+input2VoltageThreshold (RW)
+input2CurrentThreshold (RW)
+input3SwitchPosition (R)
+input3VoltageThreshold (RW)
+input3CurrentThreshold (RW)
+input4SwitchPosition (R)
+input4VoltageThreshold (RW)
+input4CurrentThreshold (RW)

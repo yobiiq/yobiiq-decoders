@@ -1,0 +1,256 @@
+1. Restart the LoRaWAN interface (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+        }
+    ]
+}
+
+
+2. Configure ADR and SF (2 parameters, fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "adr",
+            "Value": 0
+        },
+        {
+            "Param": "sf",
+            "Value": "SF9BW125"
+        }
+    ]
+}
+
+- Enum values are given as a number (3) or as the label shown in uplinks ("SF9BW125").
+- At most 10 parameters, and at most 64 bytes once encoded (a 15 character string takes 18).
+- Strings are ASCII, at most 15 characters.
+
+
+3. Read device registers (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "firmwareVersion",
+        "adr",
+        "sf",
+        "radioMode",
+        "numberOfJoinAttempts",
+        "linkCheckTimeframe",
+        "dataRetransmission",
+        "lorawanWatchdogAlarm"
+    ]
+}
+
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer comes as an uplink on fPort 100.
+
+
+4. Configure a 15 min periodic unconfirmed uplink on fPort 2
+
+{
+    "fPort": 2,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 15,
+        "Mode": 0,
+        "Status": 1,
+        "Registers": [
+            "voltageL1N",
+            "currentL1",
+            "totalSystemActivePower",
+            "frequency",
+            "totalImportActiveEnergy"
+        ]
+    }
+}
+
+- fPort 1 to 10, one configuration per fPort. Any subset of the four fields may be sent.
+- UplinkInterval: minutes, 1 to 65535
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = fPort disabled, 1 = fPort enabled
+- Registers: at most 10 readable registers
+
+
+5. Configure max demand logging (fPort 11)
+
+{
+    "fPort": 11,
+    "Type": "MaxDemand",
+    "MaxDemand": {
+        "Register": "maximumCurrentL1Demand",
+        "Mode": 0,
+        "Status": 1,
+        "DataloggerInterval": 5,
+        "UplinkInterval": 30
+    }
+}
+
+- All five fields are required.
+- Register: one of maximumCurrentL1Demand, maximumCurrentL2Demand, maximumCurrentL3Demand, maximumTotalSystemActivePowerDemand, maximumTotalSystemReactivePowerDemand, maximumTotalSystemApparentPowerDemand
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = logging off, 1 = logging on
+- DataloggerInterval: minutes between logged values (1 to 65535)
+- UplinkInterval: minutes between history uplinks on fPort 20 (1 to 65535)
+
+
+6. Serial link to the meter (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "serialBaudRate",
+            "Value": 9600
+        },
+        {
+            "Param": "serialParity",
+            "Value": "NONE"
+        },
+        {
+            "Param": "serialStopBits",
+            "Value": 1
+        }
+    ]
+}
+
+- Incorrect settings stop the module from reading the meter. Change with care.
+
+
+******************  List of registers ********************
+(R) readable, (W) writable, (RW) both. Values that only appear in uplinks (alarms) are not listed.
+
+buildingName (RW)
+buildingRoom (RW)
+deviceName (RW)
+deviceStatus (R)
+manufacturer (R)
+originalEquipmentManufacturer (R)
+deviceModel (R)
+deviceSerialNumber (R)
+firmwareVersion (R)
+hardwareVersion (R)
+externalPowerStatus (R)
+batteryVoltage (R)
+batteryPercentage (R)
+rebootDevice (W)
+internalCircuitTemperatureAlarm (R)
+internalCircuitTemperatureNumberOfAlarms (R)
+internalCircuitTemperature (R)
+internalCircuitHumidity (R)
+ambientTemperature (R)
+ambientHumidity (R)
+restartLoRaWAN (W)
+joinStatus (R)
+radioModule (R)
+lorawanRegion (R)
+lorawanVersion (R)
+applicationPort (R)
+joinType (R)
+deviceClass (RW)
+adr (RW)
+sf (RW)
+adrProfile (RW)
+radioMode (RW)
+numberOfJoinAttempts (RW)
+linkCheckTimeframe (RW)
+dataRetransmission (RW)
+lorawanWatchdogAlarm (R)
+voltageL1N (R)
+voltageL2N (R)
+voltageL3N (R)
+currentL1 (R)
+currentL2 (R)
+currentL3 (R)
+activePowerL1 (R)
+activePowerL2 (R)
+activePowerL3 (R)
+reactivePowerL1 (R)
+reactivePowerL2 (R)
+reactivePowerL3 (R)
+apparentPowerL1 (R)
+apparentPowerL2 (R)
+apparentPowerL3 (R)
+powerFactorL1 (R)
+powerFactorL2 (R)
+powerFactorL3 (R)
+phaseAngleL1 (R)
+phaseAngleL2 (R)
+phaseAngleL3 (R)
+voltageL1L2 (R)
+voltageL2L3 (R)
+voltageL3L1 (R)
+frequency (R)
+totalSystemActivePower (R)
+totalSystemReactivePower (R)
+totalSystemApparentPower (R)
+totalSystemPowerFactor (R)
+totalSystemPhaseAngle (R)
+currentL123 (R)
+averageVoltageLL (R)
+averageVoltageLN (R)
+averageCurrentL (R)
+currentN (R)
+totalSystemActivePowerDemand (R)
+totalSystemReactivePowerDemand (R)
+totalSystemApparentPowerDemand (R)
+currentL1Demand (R)
+currentL2Demand (R)
+currentL3Demand (R)
+maximumTotalSystemActivePowerDemand (R)
+maximumTotalSystemReactivePowerDemand (R)
+maximumTotalSystemApparentPowerDemand (R)
+maximumCurrentL1Demand (R)
+maximumCurrentL2Demand (R)
+maximumCurrentL3Demand (R)
+totalImportActiveEnergy (R)
+totalExportActiveEnergy (R)
+totalActiveEnergy (R)
+totalImportReactiveEnergy (R)
+totalExportReactiveEnergy (R)
+totalReactiveEnergy (R)
+totalActiveEnergyRate1 (R)
+totalActiveEnergyRate2 (R)
+totalActiveEnergyRate3 (R)
+totalActiveEnergyRate4 (R)
+totalImportActiveEnergyRate1 (R)
+totalImportActiveEnergyRate2 (R)
+totalImportActiveEnergyRate3 (R)
+totalImportActiveEnergyRate4 (R)
+totalExportActiveEnergyRate1 (R)
+totalExportActiveEnergyRate2 (R)
+totalExportActiveEnergyRate3 (R)
+totalExportActiveEnergyRate4 (R)
+totalReactiveEnergyRate1 (R)
+totalReactiveEnergyRate2 (R)
+totalReactiveEnergyRate3 (R)
+totalReactiveEnergyRate4 (R)
+totalImportReactiveEnergyRate1 (R)
+totalImportReactiveEnergyRate2 (R)
+totalImportReactiveEnergyRate3 (R)
+totalImportReactiveEnergyRate4 (R)
+totalExportReactiveEnergyRate1 (R)
+totalExportReactiveEnergyRate2 (R)
+totalExportReactiveEnergyRate3 (R)
+totalExportReactiveEnergyRate4 (R)
+electricalCabinet (RW)
+electricalGroup (RW)
+serialWatchdogAlarm (R)
+serialStopBits (RW)
+serialDataWidth (RW)
+serialParity (RW)
+serialBaudRate (RW)
+serialModbusExecutionInterval (RW)
+serialModbusResponseTimeout (RW)
+serialModbusMaxRetries (RW)
+serialModbusSlaveId (RW)

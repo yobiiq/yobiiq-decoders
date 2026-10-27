@@ -1,330 +1,692 @@
-1. Restart the LoRaWAN Interface (send over fPort 50)
+1. Restart the LoRaWAN interface (fPort 50)
 
 {
-    "fPort" : 50,
-    "Type" : "Config",
-    "Config" : [{
-        "Param" : "restartLoRaWAN",
-        "Value" : 1
-    }]
-}
-
-
-2. To configure ADR and SF (2 parameters)
-
-{
-    "fPort" : 50,
+    "fPort": 50,
     "Type": "Config",
-    "Config": [{
-        "Param": "adr",
-        "Value": 0
-    }, {
-        "Param": "sf",
-        "Value": 3
-    }]
+    "Config": [
+        {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+        }
+    ]
 }
 
 
-3. Read device registers (send over fPort 100)
+2. Configure ADR and SF (2 parameters, fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "adr",
+            "Value": 0
+        },
+        {
+            "Param": "sf",
+            "Value": "SF9BW125"
+        }
+    ]
+}
+
+- Enum values are given as a number (3) or as the label shown in uplinks ("SF9BW125").
+- At most 10 parameters, and at most 64 bytes once encoded (a 15 character string takes 18).
+- Strings are ASCII, at most 15 characters.
+
+
+3. Read device registers (fPort 100)
 
 {
     "fPort": 100,
     "Type": "Reading",
     "Reading": [
-        "adr", "sf", "adrProfile", 
-        "radioMode", "numberOfJoinAttempts",
-        "linkCheckTimeframe", "dataRetransmission",
-        "lorawanWatchdogAlarm",
+        "firmwareVersion",
+        "adr",
+        "sf",
+        "radioMode",
+        "numberOfJoinAttempts",
+        "linkCheckTimeframe",
+        "dataRetransmission",
+        "lorawanWatchdogAlarm"
     ]
 }
 
-Note : Please limit to 10 registers per Reading
-See list of registers below
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer comes as an uplink on fPort 100.
 
 
-4. Configure 15 min periodic unconfirmed uplink
+4. Configure a 15 min periodic unconfirmed uplink on fPort 2
 
 {
-    "fPort" : 2,
+    "fPort": 2,
     "Type": "Periodic",
     "Periodic": {
         "UplinkInterval": 15,
-        "Mode": 1,
+        "Mode": 0,
         "Status": 1,
-        "Registers": ["voltageL1N", "currentL1", "activePowerL1", "frequency", "powerFactorL1", "phaseAngleL1"]
+        "Registers": [
+            "voltageL1N",
+            "currentL1",
+            "activePowerTotal",
+            "frequency",
+            "powerFactorSystem",
+            "importActiveEnergySystem"
+        ]
     }
 }
 
-Note : Please limit to 10 registers per fPort (fPort between 1 to 10)
-- UplinkInterval : uplink interval in minutes (always greater than 0)
-- Mode : 0 => unconfirmed uplink; 1 => confirmed uplink
-- Status : 0 => fPort disabled; 1 => fPort enabled
-- Registers : list of registers
+- fPort 1 to 10, one configuration per fPort. Any subset of the four fields may be sent.
+- UplinkInterval: minutes, 1 to 65535
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = fPort disabled, 1 = fPort enabled
+- Registers: at most 10 readable registers
+
+
+5. Configure max demand logging (fPort 11)
+
+{
+    "fPort": 11,
+    "Type": "MaxDemand",
+    "MaxDemand": {
+        "Register": "currentMaxDemandTotal",
+        "Mode": 0,
+        "Status": 1,
+        "DataloggerInterval": 5,
+        "UplinkInterval": 30
+    }
+}
+
+- All five fields are required.
+- Register: one of currentMaxDemandL1, currentMaxDemandL2, currentMaxDemandL3, currentMaxDemandTotal, activePowerImportMaxDemand, activePowerExportMaxDemand, reactivePowerImportMaxDemand, reactivePowerExportMaxDemand, apparentPowerMaxDemand (L2 and L3 on DEM4 only)
+- Mode: 0 = unconfirmed uplink, 1 = confirmed uplink
+- Status: 0 = logging off, 1 = logging on
+- DataloggerInterval: minutes between logged values (1 to 65535)
+- UplinkInterval: minutes between history uplinks on fPort 20 (1 to 65535)
+
+
+6. Meter commands (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "meterClearDemandData",
+            "Value": 1
+        },
+        {
+            "Param": "meterActivateTariff2",
+            "Value": 1
+        }
+    ]
+}
+
+- Write 1 to execute; reading a command register returns 1 while it is pending.
+
+
+7. Switch a relay output (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1DesiredState",
+            "Value": "ON_BY_DL"
+        },
+        {
+            "Param": "channel2DesiredState",
+            "Value": "AUTO"
+        }
+    ]
+}
+
+- channel<N>DesiredState: AUTO (0), ON_BY_DL (1) or OFF_BY_DL (2) over LoRaWAN.
+
+
+8. Momentary toggle of relay 1 for 30 s (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1MomentaryDuration",
+            "Value": 30
+        },
+        {
+            "Param": "channel1MomentaryRequestId",
+            "Value": 7
+        }
+    ]
+}
+
+- Duration 1 to 120 s, sent together with a request id (0 to 255).
+
+
+9. Voltage protection on relay 1 (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1VoltageProtection",
+            "Value": "ENABLED"
+        },
+        {
+            "Param": "channel1VoltageHighLimit",
+            "Value": 253
+        },
+        {
+            "Param": "channel1VoltageLowLimit",
+            "Value": 180
+        }
+    ]
+}
+
+- Limits in volts, 0 to 300. The device requires the high limit to stay above the low limit
+  at every write, so order the parameters accordingly (raise the high limit first).
+
+
+10. Week timer of relay 1: Monday 08:00 to 17:00 (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1MondayWindow1StartMinute",
+            "Value": 480
+        },
+        {
+            "Param": "channel1MondayWindow1EndMinute",
+            "Value": 1020
+        },
+        {
+            "Param": "channel1WeekTimer",
+            "Value": "ENABLED"
+        }
+    ]
+}
+
+- Minutes of the day, 0 to 1440; 4 windows per day, Monday to Sunday.
+
+
+11. LoRaWAN relay watchdog: relays to their initial state as soon as the network is lost (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1InitialState",
+            "Value": "OFF"
+        },
+        {
+            "Param": "watchdog",
+            "Value": "ENABLED"
+        }
+    ]
+}
+
+- The initial states apply to the relay outputs driven over LoRaWAN as soon as the device detects
+  the loss of the network, without delay, until the device joins the network again or the watchdog
+  is disabled. With the watchdog DISABLED, a network loss is silent (the relays keep their control)
+  until the watchdog is ENABLED during the outage, which applies the initial states at once.
+- lorawanWatchdogAlarm reads ALARM while the network is lost.
+
 
 ******************  List of registers ********************
-buildingName
-buildingRoom
-deviceName
-deviceStatus
-manufacturer
-originalEquipmentManufacturer
-deviceModel
-deviceSerialNumber
-firmwareVersion
-hardwareVersion
-externalPowerStatus
-batteryVoltage
-batteryPercentage
-internalCircuitTemperatureAlarm
-internalCircuitTemperatureNumberOfAlarms
-internalCircuitTemperature
-internalCircuitHumidity
-ambientTemperature
-ambientHumidity
-joinStatus
-applicationPort
-joinType
-deviceClass
-adr
-sf
-adrProfile
-radioMode
-numberOfJoinAttempts
-linkCheckTimeframe
-dataRetransmission
-lorawanWatchdogAlarm
-electricalCabinet
-electricalGroup
-serialWatchdogAlarm
-serialModbusSlaveId
-serialStopBits
-serialParity
-serialDataWidth
-serialBaudRate
-serialModbusExecutionInterval
-serialModbusResponseTimeout
-serialModbusMaxRetries
-frequency
-phaseSequence
-voltageAvgLN
-voltageL1N
-voltageL2N
-voltageL3N
-voltageL1L2
-voltageL2L3
-voltageL3L1
-voltageAvgLL
-voltageThdL1
-voltageThdL2
-voltageThdL3
-currentTotal
-currentL1
-currentL2
-currentL3
-currentNeutral
-currentThdL1
-currentThdL2
-currentThdL3
-currentAvg
-currentAvgL1
-currentAvgL2
-currentAvgL3
-currentDemandTotal
-currentDemandL1
-currentDemandL2
-currentDemandL3
-currentMaxDemandTotal
-currentMaxDemandL1
-currentMaxDemandL2
-currentMaxDemandL3
-activePowerTotal
-activePowerL1
-activePowerL2
-activePowerL3
-activePowerImportDemand
-activePowerExportDemand
-activePowerImportMaxDemand
-activePowerExportMaxDemand
-reactivePowerTotal
-reactivePowerL1
-reactivePowerL2
-reactivePowerL3
-reactivePowerImportDemand
-reactivePowerExportDemand
-reactivePowerImportMaxDemand
-reactivePowerExportMaxDemand
-apparentPowerTotal
-apparentPowerL1
-apparentPowerL2
-apparentPowerL3
-apparentPowerDemand
-apparentPowerMaxDemand
-phaseAngleL1
-phaseAngleL2
-phaseAngleL3
-cosPhiL1
-cosPhiL2
-cosPhiL3
-powerFactorSystem
-powerFactorL1
-powerFactorL2
-powerFactorL3
-importActiveEnergySystem
-importActiveEnergyL1
-importActiveEnergyL2
-importActiveEnergyL3
-importActiveEnergySystemT1
-importActiveEnergyL1T1
-importActiveEnergyL2T1
-importActiveEnergyL3T1
-importActiveEnergySystemT2
-importActiveEnergyL1T2
-importActiveEnergyL2T2
-importActiveEnergyL3T2
-importActiveEnergySystemT3
-importActiveEnergyL1T3
-importActiveEnergyL2T3
-importActiveEnergyL3T3
-importActiveEnergySystemT4
-importActiveEnergyL1T4
-importActiveEnergyL2T4
-importActiveEnergyL3T4
-importActiveEnergySystemPartial
-importActiveEnergyL1Partial
-importActiveEnergyL2Partial
-importActiveEnergyL3Partial
-exportActiveEnergySystem
-exportActiveEnergyL1
-exportActiveEnergyL2
-exportActiveEnergyL3
-exportActiveEnergySystemT1
-exportActiveEnergyL1T1
-exportActiveEnergyL2T1
-exportActiveEnergyL3T1
-exportActiveEnergySystemT2
-exportActiveEnergyL1T2
-exportActiveEnergyL2T2
-exportActiveEnergyL3T2
-exportActiveEnergySystemT3
-exportActiveEnergyL1T3
-exportActiveEnergyL2T3
-exportActiveEnergyL3T3
-exportActiveEnergySystemT4
-exportActiveEnergyL1T4
-exportActiveEnergyL2T4
-exportActiveEnergyL3T4
-exportActiveEnergySystemPartial
-exportActiveEnergyL1Partial
-exportActiveEnergyL2Partial
-exportActiveEnergyL3Partial
-importReactiveEnergySystem
-importReactiveEnergyL1
-importReactiveEnergyL2
-importReactiveEnergyL3
-importReactiveEnergySystemT1
-importReactiveEnergyL1T1
-importReactiveEnergyL2T1
-importReactiveEnergyL3T1
-importReactiveEnergySystemT2
-importReactiveEnergyL1T2
-importReactiveEnergyL2T2
-importReactiveEnergyL3T2
-importReactiveEnergySystemT3
-importReactiveEnergyL1T3
-importReactiveEnergyL2T3
-importReactiveEnergyL3T3
-importReactiveEnergySystemT4
-importReactiveEnergyL1T4
-importReactiveEnergyL2T4
-importReactiveEnergyL3T4
-importReactiveEnergySystemPartial
-importReactiveEnergyL1Partial
-importReactiveEnergyL2Partial
-importReactiveEnergyL3Partial
-exportReactiveEnergySystem
-exportReactiveEnergyL1
-exportReactiveEnergyL2
-exportReactiveEnergyL3
-exportReactiveEnergySystemT1
-exportReactiveEnergyL1T1
-exportReactiveEnergyL2T1
-exportReactiveEnergyL3T1
-exportReactiveEnergySystemT2
-exportReactiveEnergyL1T2
-exportReactiveEnergyL2T2
-exportReactiveEnergyL3T2
-exportReactiveEnergySystemT3
-exportReactiveEnergyL1T3
-exportReactiveEnergyL2T3
-exportReactiveEnergyL3T3
-exportReactiveEnergySystemT4
-exportReactiveEnergyL1T4
-exportReactiveEnergyL2T4
-exportReactiveEnergyL3T4
-exportReactiveEnergySystemPartial
-exportReactiveEnergyL1Partial
-exportReactiveEnergyL2Partial
-exportReactiveEnergyL3Partial
-activeEnergyBalanceSystem
-activeEnergyBalanceL1
-activeEnergyBalanceL2
-activeEnergyBalanceL3
-reactiveEnergyBalanceSystem
-reactiveEnergyBalanceL1
-reactiveEnergyBalanceL2
-reactiveEnergyBalanceL3
-reactiveEnergyZone1System
-reactiveEnergyZone1L1
-reactiveEnergyZone1L2
-reactiveEnergyZone1L3
-reactiveEnergyZone1SystemT1
-reactiveEnergyZone1L1T1
-reactiveEnergyZone1L2T1
-reactiveEnergyZone1L3T1
-reactiveEnergyZone1SystemT2
-reactiveEnergyZone1L1T2
-reactiveEnergyZone1L2T2
-reactiveEnergyZone1L3T2
-reactiveEnergyZone2System
-reactiveEnergyZone2L1
-reactiveEnergyZone2L2
-reactiveEnergyZone2L3
-reactiveEnergyZone2SystemT1
-reactiveEnergyZone2L1T1
-reactiveEnergyZone2L2T1
-reactiveEnergyZone2L3T1
-reactiveEnergyZone2SystemT2
-reactiveEnergyZone2L1T2
-reactiveEnergyZone2L2T2
-reactiveEnergyZone2L3T2
-reactiveEnergyZone3System
-reactiveEnergyZone3L1
-reactiveEnergyZone3L2
-reactiveEnergyZone3L3
-reactiveEnergyZone3SystemT1
-reactiveEnergyZone3L1T1
-reactiveEnergyZone3L2T1
-reactiveEnergyZone3L3T1
-reactiveEnergyZone3SystemT2
-reactiveEnergyZone3L1T2
-reactiveEnergyZone3L2T2
-reactiveEnergyZone3L3T2
-reactiveEnergyZone4System
-reactiveEnergyZone4L1
-reactiveEnergyZone4L2
-reactiveEnergyZone4L3
-reactiveEnergyZone4SystemT1
-reactiveEnergyZone4L1T1
-reactiveEnergyZone4L2T1
-reactiveEnergyZone4L3T1
-reactiveEnergyZone4SystemT2
-reactiveEnergyZone4L1T2
-reactiveEnergyZone4L2T2
-reactiveEnergyZone4L3T2
-digitalInputFlags
-digitalInput1Counter
-digitalInput1OnTime
-digitalInput2Counter
-digitalInput2OnTime
-diagnosticAlarms
-diagnosticErrorFlags
+(R) readable, (W) writable, (RW) both. Values that only appear in uplinks (alarms) are not listed.
+
+buildingName (RW)
+buildingRoom (RW)
+deviceName (RW)
+deviceStatus (R)
+manufacturer (R)
+originalEquipmentManufacturer (R)
+deviceModel (R)
+deviceSerialNumber (R)
+firmwareVersion (R)
+hardwareVersion (R)
+externalPowerStatus (R)
+batteryVoltage (R)
+batteryPercentage (R)
+rebootDevice (W)
+internalCircuitTemperatureAlarm (R)
+internalCircuitTemperatureNumberOfAlarms (R)
+internalCircuitTemperature (R)
+internalCircuitHumidity (R)
+ambientTemperature (R)
+ambientHumidity (R)
+restartLoRaWAN (W)
+joinStatus (R)
+radioModule (R)
+lorawanRegion (R)
+lorawanVersion (R)
+applicationPort (R)
+joinType (R)
+deviceClass (RW)
+adr (RW)
+sf (RW)
+adrProfile (RW)
+radioMode (RW)
+numberOfJoinAttempts (RW)
+linkCheckTimeframe (RW)
+dataRetransmission (RW)
+lorawanWatchdogAlarm (R)
+frequency (R)
+phaseSequence (R)
+voltageAvgLN (R)
+voltageL1N (R)
+voltageL2N (R)
+voltageL3N (R)
+voltageL1L2 (R)
+voltageL2L3 (R)
+voltageL3L1 (R)
+voltageAvgLL (R)
+voltageThdL1 (R)
+voltageThdL2 (R)
+voltageThdL3 (R)
+currentTotal (R)
+currentL1 (R)
+currentL2 (R)
+currentL3 (R)
+currentNeutral (R)
+currentThdL1 (R)
+currentThdL2 (R)
+currentThdL3 (R)
+currentAvg (R)
+currentAvgL1 (R)
+currentAvgL2 (R)
+currentAvgL3 (R)
+currentDemandTotal (R)
+currentDemandL1 (R)
+currentDemandL2 (R)
+currentDemandL3 (R)
+currentMaxDemandTotal (R)
+currentMaxDemandL1 (R)
+currentMaxDemandL2 (R)
+currentMaxDemandL3 (R)
+activePowerTotal (R)
+activePowerL1 (R)
+activePowerL2 (R)
+activePowerL3 (R)
+activePowerImportDemand (R)
+activePowerExportDemand (R)
+activePowerImportMaxDemand (R)
+activePowerExportMaxDemand (R)
+reactivePowerTotal (R)
+reactivePowerL1 (R)
+reactivePowerL2 (R)
+reactivePowerL3 (R)
+reactivePowerImportDemand (R)
+reactivePowerExportDemand (R)
+reactivePowerImportMaxDemand (R)
+reactivePowerExportMaxDemand (R)
+apparentPowerTotal (R)
+apparentPowerL1 (R)
+apparentPowerL2 (R)
+apparentPowerL3 (R)
+apparentPowerDemand (R)
+apparentPowerMaxDemand (R)
+phaseAngleL1 (R)
+phaseAngleL2 (R)
+phaseAngleL3 (R)
+cosPhiL1 (R)
+cosPhiL2 (R)
+cosPhiL3 (R)
+powerFactorSystem (R)
+powerFactorL1 (R)
+powerFactorL2 (R)
+powerFactorL3 (R)
+importActiveEnergySystem (R)
+importActiveEnergyL1 (R)
+importActiveEnergyL2 (R)
+importActiveEnergyL3 (R)
+importActiveEnergySystemT1 (R)
+importActiveEnergyL1T1 (R)
+importActiveEnergyL2T1 (R)
+importActiveEnergyL3T1 (R)
+importActiveEnergySystemT2 (R)
+importActiveEnergyL1T2 (R)
+importActiveEnergyL2T2 (R)
+importActiveEnergyL3T2 (R)
+importActiveEnergySystemT3 (R)
+importActiveEnergyL1T3 (R)
+importActiveEnergyL2T3 (R)
+importActiveEnergyL3T3 (R)
+importActiveEnergySystemT4 (R)
+importActiveEnergyL1T4 (R)
+importActiveEnergyL2T4 (R)
+importActiveEnergyL3T4 (R)
+importActiveEnergySystemPartial (R)
+importActiveEnergyL1Partial (R)
+importActiveEnergyL2Partial (R)
+importActiveEnergyL3Partial (R)
+exportActiveEnergySystem (R)
+exportActiveEnergyL1 (R)
+exportActiveEnergyL2 (R)
+exportActiveEnergyL3 (R)
+exportActiveEnergySystemT1 (R)
+exportActiveEnergyL1T1 (R)
+exportActiveEnergyL2T1 (R)
+exportActiveEnergyL3T1 (R)
+exportActiveEnergySystemT2 (R)
+exportActiveEnergyL1T2 (R)
+exportActiveEnergyL2T2 (R)
+exportActiveEnergyL3T2 (R)
+exportActiveEnergySystemT3 (R)
+exportActiveEnergyL1T3 (R)
+exportActiveEnergyL2T3 (R)
+exportActiveEnergyL3T3 (R)
+exportActiveEnergySystemT4 (R)
+exportActiveEnergyL1T4 (R)
+exportActiveEnergyL2T4 (R)
+exportActiveEnergyL3T4 (R)
+exportActiveEnergySystemPartial (R)
+exportActiveEnergyL1Partial (R)
+exportActiveEnergyL2Partial (R)
+exportActiveEnergyL3Partial (R)
+importReactiveEnergySystem (R)
+importReactiveEnergyL1 (R)
+importReactiveEnergyL2 (R)
+importReactiveEnergyL3 (R)
+importReactiveEnergySystemT1 (R)
+importReactiveEnergyL1T1 (R)
+importReactiveEnergyL2T1 (R)
+importReactiveEnergyL3T1 (R)
+importReactiveEnergySystemT2 (R)
+importReactiveEnergyL1T2 (R)
+importReactiveEnergyL2T2 (R)
+importReactiveEnergyL3T2 (R)
+importReactiveEnergySystemT3 (R)
+importReactiveEnergyL1T3 (R)
+importReactiveEnergyL2T3 (R)
+importReactiveEnergyL3T3 (R)
+importReactiveEnergySystemT4 (R)
+importReactiveEnergyL1T4 (R)
+importReactiveEnergyL2T4 (R)
+importReactiveEnergyL3T4 (R)
+importReactiveEnergySystemPartial (R)
+importReactiveEnergyL1Partial (R)
+importReactiveEnergyL2Partial (R)
+importReactiveEnergyL3Partial (R)
+exportReactiveEnergySystem (R)
+exportReactiveEnergyL1 (R)
+exportReactiveEnergyL2 (R)
+exportReactiveEnergyL3 (R)
+exportReactiveEnergySystemT1 (R)
+exportReactiveEnergyL1T1 (R)
+exportReactiveEnergyL2T1 (R)
+exportReactiveEnergyL3T1 (R)
+exportReactiveEnergySystemT2 (R)
+exportReactiveEnergyL1T2 (R)
+exportReactiveEnergyL2T2 (R)
+exportReactiveEnergyL3T2 (R)
+exportReactiveEnergySystemPartial (R)
+exportReactiveEnergyL1Partial (R)
+exportReactiveEnergyL2Partial (R)
+exportReactiveEnergyL3Partial (R)
+activeEnergyBalanceSystem (R)
+activeEnergyBalanceL1 (R)
+activeEnergyBalanceL2 (R)
+activeEnergyBalanceL3 (R)
+reactiveEnergyBalanceSystem (R)
+reactiveEnergyBalanceL1 (R)
+reactiveEnergyBalanceL2 (R)
+reactiveEnergyBalanceL3 (R)
+reactiveEnergyZone1System (R)
+reactiveEnergyZone1L1 (R)
+reactiveEnergyZone1L2 (R)
+reactiveEnergyZone1L3 (R)
+reactiveEnergyZone1SystemT1 (R)
+reactiveEnergyZone1L1T1 (R)
+reactiveEnergyZone1L2T1 (R)
+reactiveEnergyZone1L3T1 (R)
+reactiveEnergyZone1SystemT2 (R)
+reactiveEnergyZone1L1T2 (R)
+reactiveEnergyZone1L2T2 (R)
+reactiveEnergyZone1L3T2 (R)
+reactiveEnergyZone2System (R)
+reactiveEnergyZone2L1 (R)
+reactiveEnergyZone2L2 (R)
+reactiveEnergyZone2L3 (R)
+reactiveEnergyZone2SystemT1 (R)
+reactiveEnergyZone2L1T1 (R)
+reactiveEnergyZone2L2T1 (R)
+reactiveEnergyZone2L3T1 (R)
+reactiveEnergyZone2SystemT2 (R)
+reactiveEnergyZone2L1T2 (R)
+reactiveEnergyZone2L2T2 (R)
+reactiveEnergyZone2L3T2 (R)
+reactiveEnergyZone3System (R)
+reactiveEnergyZone3L1 (R)
+reactiveEnergyZone3L2 (R)
+reactiveEnergyZone3L3 (R)
+reactiveEnergyZone3SystemT1 (R)
+reactiveEnergyZone3L1T1 (R)
+reactiveEnergyZone3L2T1 (R)
+reactiveEnergyZone3L3T1 (R)
+reactiveEnergyZone3SystemT2 (R)
+reactiveEnergyZone3L1T2 (R)
+reactiveEnergyZone3L2T2 (R)
+reactiveEnergyZone3L3T2 (R)
+reactiveEnergyZone4System (R)
+reactiveEnergyZone4L1 (R)
+reactiveEnergyZone4L2 (R)
+reactiveEnergyZone4L3 (R)
+reactiveEnergyZone4SystemT1 (R)
+reactiveEnergyZone4L1T1 (R)
+reactiveEnergyZone4L2T1 (R)
+reactiveEnergyZone4L3T1 (R)
+reactiveEnergyZone4SystemT2 (R)
+reactiveEnergyZone4L1T2 (R)
+reactiveEnergyZone4L2T2 (R)
+reactiveEnergyZone4L3T2 (R)
+digitalInputFlags (R)
+digitalInput1Counter (R)
+digitalInput1OnTime (R)
+digitalInput2Counter (R)
+digitalInput2OnTime (R)
+diagnosticAlarms (R)
+diagnosticErrorFlags (R)
+electricalCabinet (RW)
+electricalGroup (RW)
+meterFirmwareVersion (R)
+serialWatchdogAlarm (R)
+serialModbusSlaveId (RW)
+serialStopBits (RW)
+serialParity (RW)
+serialDataWidth (RW)
+serialBaudRate (RW)
+serialModbusExecutionInterval (RW)
+serialModbusResponseTimeout (RW)
+serialModbusMaxRetries (RW)
+digitalOutput1Source (R)
+digitalOutput1Mode (R)
+digitalOutput1EnergyWeight (R)
+digitalOutput1Multiplier (R)
+digitalOutput1OnTime (R)
+digitalOutput2Source (RW)
+digitalOutput2Mode (RW)
+digitalOutput2EnergyWeight (RW)
+digitalOutput2Multiplier (RW)
+digitalOutput2OnTime (RW)
+digitalInput1Source (RW)
+digitalInput1Delay (RW)
+digitalInput1Edge (RW)
+digitalInput2Source (RW)
+digitalInput2Delay (RW)
+digitalInput2Edge (RW)
+demandMethod (RW)
+demandPeriod (RW)
+demandRollingSubPeriod (RW)
+meterSaveConfiguration (RW)
+meterFactoryReset (RW)
+meterRestart (RW)
+meterClearDemandData (RW)
+meterClearDigitalInputCounter (RW)
+meterActivateTariff1 (RW)
+meterActivateTariff2 (RW)
+meterClearRunHours (RW)
+voltageTransformerPrimary (R)
+voltageTransformerSecondary (R)
+currentTransformerPrimary (RW)
+currentTransformerSecondary (RW)
+overheatThreshold (RW)
+protectionDelay (RW)
+watchdog (RW)
+channel1ControlMode (RW)
+channel1InitialState (RW)
+channel1WeekTimer (RW)
+channel1WeekTimerScheduleValidity (R)
+channel1DesiredState (RW)
+channel1BleControl (RW)
+channel1VoltageProtection (RW)
+channel1VoltageHighLimit (RW)
+channel1VoltageLowLimit (RW)
+channel1CurrentProtection (RW)
+channel1CurrentLimit (RW)
+channel1ConsumptionCumulative (R)
+channel1ConsumptionCurrentUser (RW)
+channel1Prepaid (RW)
+channel1AllowedConsumption (RW)
+channel1Postpaid (RW)
+channel1MomentaryDuration (RW)
+channel1MomentaryRequestId (RW)
+channel1OnOffCycles (R)
+channel1RelayStateInfo (R)
+channel2ControlMode (RW)
+channel2InitialState (RW)
+channel2WeekTimer (RW)
+channel2WeekTimerScheduleValidity (R)
+channel2DesiredState (RW)
+channel2BleControl (RW)
+channel2VoltageProtection (RW)
+channel2VoltageHighLimit (RW)
+channel2VoltageLowLimit (RW)
+channel2CurrentProtection (RW)
+channel2CurrentLimit (RW)
+channel2ConsumptionCumulative (R)
+channel2ConsumptionCurrentUser (RW)
+channel2Prepaid (RW)
+channel2AllowedConsumption (RW)
+channel2Postpaid (RW)
+channel2MomentaryDuration (RW)
+channel2MomentaryRequestId (RW)
+channel2OnOffCycles (R)
+channel2RelayStateInfo (R)
+channel1MondayWindow1StartMinute (RW)
+channel1MondayWindow1EndMinute (RW)
+channel1MondayWindow2StartMinute (RW)
+channel1MondayWindow2EndMinute (RW)
+channel1MondayWindow3StartMinute (RW)
+channel1MondayWindow3EndMinute (RW)
+channel1MondayWindow4StartMinute (RW)
+channel1MondayWindow4EndMinute (RW)
+channel1TuesdayWindow1StartMinute (RW)
+channel1TuesdayWindow1EndMinute (RW)
+channel1TuesdayWindow2StartMinute (RW)
+channel1TuesdayWindow2EndMinute (RW)
+channel1TuesdayWindow3StartMinute (RW)
+channel1TuesdayWindow3EndMinute (RW)
+channel1TuesdayWindow4StartMinute (RW)
+channel1TuesdayWindow4EndMinute (RW)
+channel1WednesdayWindow1StartMinute (RW)
+channel1WednesdayWindow1EndMinute (RW)
+channel1WednesdayWindow2StartMinute (RW)
+channel1WednesdayWindow2EndMinute (RW)
+channel1WednesdayWindow3StartMinute (RW)
+channel1WednesdayWindow3EndMinute (RW)
+channel1WednesdayWindow4StartMinute (RW)
+channel1WednesdayWindow4EndMinute (RW)
+channel1ThursdayWindow1StartMinute (RW)
+channel1ThursdayWindow1EndMinute (RW)
+channel1ThursdayWindow2StartMinute (RW)
+channel1ThursdayWindow2EndMinute (RW)
+channel1ThursdayWindow3StartMinute (RW)
+channel1ThursdayWindow3EndMinute (RW)
+channel1ThursdayWindow4StartMinute (RW)
+channel1ThursdayWindow4EndMinute (RW)
+channel1FridayWindow1StartMinute (RW)
+channel1FridayWindow1EndMinute (RW)
+channel1FridayWindow2StartMinute (RW)
+channel1FridayWindow2EndMinute (RW)
+channel1FridayWindow3StartMinute (RW)
+channel1FridayWindow3EndMinute (RW)
+channel1FridayWindow4StartMinute (RW)
+channel1FridayWindow4EndMinute (RW)
+channel1SaturdayWindow1StartMinute (RW)
+channel1SaturdayWindow1EndMinute (RW)
+channel1SaturdayWindow2StartMinute (RW)
+channel1SaturdayWindow2EndMinute (RW)
+channel1SaturdayWindow3StartMinute (RW)
+channel1SaturdayWindow3EndMinute (RW)
+channel1SaturdayWindow4StartMinute (RW)
+channel1SaturdayWindow4EndMinute (RW)
+channel1SundayWindow1StartMinute (RW)
+channel1SundayWindow1EndMinute (RW)
+channel1SundayWindow2StartMinute (RW)
+channel1SundayWindow2EndMinute (RW)
+channel1SundayWindow3StartMinute (RW)
+channel1SundayWindow3EndMinute (RW)
+channel1SundayWindow4StartMinute (RW)
+channel1SundayWindow4EndMinute (RW)
+channel2MondayWindow1StartMinute (RW)
+channel2MondayWindow1EndMinute (RW)
+channel2MondayWindow2StartMinute (RW)
+channel2MondayWindow2EndMinute (RW)
+channel2MondayWindow3StartMinute (RW)
+channel2MondayWindow3EndMinute (RW)
+channel2MondayWindow4StartMinute (RW)
+channel2MondayWindow4EndMinute (RW)
+channel2TuesdayWindow1StartMinute (RW)
+channel2TuesdayWindow1EndMinute (RW)
+channel2TuesdayWindow2StartMinute (RW)
+channel2TuesdayWindow2EndMinute (RW)
+channel2TuesdayWindow3StartMinute (RW)
+channel2TuesdayWindow3EndMinute (RW)
+channel2TuesdayWindow4StartMinute (RW)
+channel2TuesdayWindow4EndMinute (RW)
+channel2WednesdayWindow1StartMinute (RW)
+channel2WednesdayWindow1EndMinute (RW)
+channel2WednesdayWindow2StartMinute (RW)
+channel2WednesdayWindow2EndMinute (RW)
+channel2WednesdayWindow3StartMinute (RW)
+channel2WednesdayWindow3EndMinute (RW)
+channel2WednesdayWindow4StartMinute (RW)
+channel2WednesdayWindow4EndMinute (RW)
+channel2ThursdayWindow1StartMinute (RW)
+channel2ThursdayWindow1EndMinute (RW)
+channel2ThursdayWindow2StartMinute (RW)
+channel2ThursdayWindow2EndMinute (RW)
+channel2ThursdayWindow3StartMinute (RW)
+channel2ThursdayWindow3EndMinute (RW)
+channel2ThursdayWindow4StartMinute (RW)
+channel2ThursdayWindow4EndMinute (RW)
+channel2FridayWindow1StartMinute (RW)
+channel2FridayWindow1EndMinute (RW)
+channel2FridayWindow2StartMinute (RW)
+channel2FridayWindow2EndMinute (RW)
+channel2FridayWindow3StartMinute (RW)
+channel2FridayWindow3EndMinute (RW)
+channel2FridayWindow4StartMinute (RW)
+channel2FridayWindow4EndMinute (RW)
+channel2SaturdayWindow1StartMinute (RW)
+channel2SaturdayWindow1EndMinute (RW)
+channel2SaturdayWindow2StartMinute (RW)
+channel2SaturdayWindow2EndMinute (RW)
+channel2SaturdayWindow3StartMinute (RW)
+channel2SaturdayWindow3EndMinute (RW)
+channel2SaturdayWindow4StartMinute (RW)
+channel2SaturdayWindow4EndMinute (RW)
+channel2SundayWindow1StartMinute (RW)
+channel2SundayWindow1EndMinute (RW)
+channel2SundayWindow2StartMinute (RW)
+channel2SundayWindow2EndMinute (RW)
+channel2SundayWindow3StartMinute (RW)
+channel2SundayWindow3EndMinute (RW)
+channel2SundayWindow4StartMinute (RW)
+channel2SundayWindow4EndMinute (RW)

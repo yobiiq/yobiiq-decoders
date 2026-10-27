@@ -1,1581 +1,1380 @@
 /**
- *__   _____  ____ ___ ___ ___  
- *\ \ / / _ \| __ )_ _|_ _/ _ \ 
+ *__   _____  ____ ___ ___ ___
+ *\ \ / / _ \| __ )_ _|_ _/ _ \
  * \ V / | | |  _ \| | | | | | |
  * | || |_| | |_) | | | | |_| |
  * |_| \___/|____/___|___\__\_\
- *                              
  *
- * @brief This YOBIIQ JS payload decoder/encoder follows the LoRa Alliance Payload Codec API specs (TS013-1.0.0). 
- * 
- * @compatibility TTN, TTI, LORIOT, ThingPark, ChirpStack v3/v4 and any LNS that follows LoRa Alliance API specs.
- * 
+ *
+ * @brief This YOBIIQ JS payload decoder/encoder follows the LoRa Alliance Payload Codec API specs (TS013-1.0.0).
+ *
+ * @compatibility ChirpStack v3 (Decode/Encode, otto ES5 engine), ChirpStack v4 (decodeUplink/encodeDownlink,
+ *                QuickJS), TTN, TTI, LORIOT, ThingPark and any LNS that follows LoRa Alliance API specs.
+ *                Written in ES3 syntax without ES5+ library calls, console or global state between calls.
+ *
  * @author      Fostin Kpodar <f.kpodar@yobiiq.com>
- * @version     1.0.0
+ * @version     1.2.0
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
- * 
+ *
  * @release     16-07-2026
- * @update      19-08-2026
- * 
+ * @update      08-10-2026
+ *
  * @product     26000x   IQ DEM (compatible with DEM1, DEM2 and DEM4 models)
- * 
- * @firmware    
- * 
+ *
+ * @firmware    IQ DEM v1.2.0
+ *
  */
 
 
-// Version Control
-var VERSION_CONTROL = {
-    CODEC : {VERSION: "1.0.0", NAME: "codecVersion"},
-    DEVICE: {MODEL : "IQ DEM", NAME: "genericModel"},
-    PRODUCT: {CODE : "26000x", NAME: "productCode"},
-    MANUFACTURER: {COMPANY : "YOBIIQ B.V.", NAME: "manufacturer"}
+// Added to every decoded uplink, without overwriting decoded fields.
+var CODEC_INFO = {
+    codecVersion: "1.2.0",
+    genericModel: "IQ DEM",
+    productCode: "26000x",
+    manufacturer: "YOBIIQ B.V."
 };
 
-var UPLINK = {
-    // generic data
-    GENERIC_DATA : {
-        CHANNEL    : 0xFF,
-        FPORT_MIN  : 50,
-        FPORT_MAX  : 99
-    },
-    // device data
-    DEVICE_DATA : {
-        FPORT_MIN : 1,
-        FPORT_MAX : 10
-    },
-    // alarm data
-    ALARM_DATA : {
-        FPORT    : 11
-    },
-    // max demand historic data
-    MAX_DEMAND_DATA : {
-        FPORT    : 20
-    },
-    // parameter data
-    PARAMETER_DATA : {
-        FPORT    : 100
-    },
-    // general
-    MAC : {
-        FPORT : 0,
-        MSG: "MAC COMMAND RECEIVED"
-    },
-    FUOTA : {
-        FPORT_MIN : 200,
-        FPORT_MAX : 202,
-        MSG: "FUOTA DATA RECEIVED"
-    },
-    FMP : {
-        FPORT : 203,
-        MSG: "FIRMWARE MANAGEMENT DATA RECEIVED"
-    },
-    DOWNLINK : {
-        SUCCESS : "DOWNLINK COMMAND SUCCEEDED",
-        FAILURE : "DOWNLINK COMMAND FAILED"
-    },
-    ERRORS : {
-        REGISTER: "Unknown register ",
-        FPORT_INCORRECT: "Incorrect fPort"
-    },
-    WARNING_NAME   : "warning",
-    ERROR_NAME     : "error",
-    INFO_NAME      : "info"
+var FPORT = {
+    MAC: 0,
+    PERIODIC_MIN: 1,
+    PERIODIC_MAX: 10,
+    ALARM: 11,
+    MAX_DEMAND_CONFIG: 11,
+    MAX_DEMAND: 20,
+    GENERIC: 50,
+    READING: 100,
+    FUOTA_MIN: 200,
+    FUOTA_MAX: 202,
+    FMP: 203
 };
 
-var DEVICE_GENERIC_REGISTERS = {
-
-    "0xFF01" : {TYPE : 'U32', NAME : "dataloggerTimestamp"},
-    "0xFF02" : {TYPE : 'U32', NAME : "timestamp"},
-
-    "0xFF32" : {TYPE : 'STR', NAME : "buildingName"},
-    "0xFF33" : {TYPE : 'STR', NAME : "buildingRoom"},
-    "0xFF34" : {TYPE : 'STR', NAME : "deviceName"},
-
-    "0xFF64" : {TYPE : 'ENUM', NAME : "deviceStatus",
-        VALUES : { "0x00" : "NORMAL MODE"}
-    },
-    "0xFF65" : {TYPE : 'STR', NAME : "manufacturer"},
-    "0xFF66" : {TYPE : 'STR', NAME : "originalEquipmentManufacturer"},
-    "0xFF67" : {TYPE : 'STR', NAME : "deviceModel"},
-    "0xFF68" : {TYPE : 'U32', NAME : "deviceSerialNumber"},
-    "0xFF69" : {TYPE : 'VER', NAME : "firmwareVersion"},
-    "0xFF6A" : {TYPE : 'VER', NAME : "hardwareVersion"},
-    "0xFF6B" : {TYPE : 'ENUM', NAME : "externalPowerStatus",
-        VALUES : { "0x00" : "AC POWER OFF", "0x01" : "AC POWER ON"}
-    },
-    "0xFF6C" : {TYPE : 'U8', NAME : "batteryVoltage", RESOLUTION: 0.1},
-    "0xFF6D" : {TYPE : 'U8', NAME : "batteryPercentage"},
-    "0xFF78" : {TYPE: 'ENUM', NAME : "internalCircuitTemperatureAlarm", 
-        VALUES: {"0x00" : "NORMAL", "0x01" : "ALARM"}
-    },
-    "0xFF79" : {TYPE: 'U32', NAME : "internalCircuitTemperatureNumberOfAlarms"},
-    "0xFF7A" : {TYPE: 'I16', NAME : "internalCircuitTemperature", RESOLUTION: 0.01},
-    "0xFF7B" : {TYPE: 'U8', NAME : "internalCircuitHumidity"},
-    "0xFF82" : {TYPE: 'I16', NAME : "ambientTemperature", RESOLUTION: 0.01},
-    "0xFF83" : {TYPE: 'U8', NAME : "ambientHumidity"},
-    "0xFF96" : {TYPE : 'ENUM', NAME : "joinStatus",
-        VALUES : { "0x00" : "OFFLINE", "0x01" : "ONLINE"}
-    },
-    "0xFF9D" : {TYPE: 'U8', NAME : "applicationPort"},
-    "0xFF9E" : {TYPE: 'ENUM', NAME : "joinType",
-        VALUES : { "0x01" : "OTAA"}
-    },
-    "0xFF9F" : {TYPE : 'ENUM', NAME : "deviceClass",
-        VALUES : { "0x00" : "CLASS A", "0x01" : "CLASS B", "0x02" : "CLASS C"}
-    },
-    "0xFFA0" : {TYPE: 'ENUM', NAME: "adr", 
-        VALUES: {"0x00" : "DISABLED", "0x01" : "ENABLED"}
-    },
-    "0xFFA1" : {TYPE: 'ENUM', NAME: "sf", 
-        VALUES: { "0x00" : "SF12BW125", "0x01" : "SF11BW125", "0x02" : "SF10BW125",
-            "0x03" : "SF9BW125", "0x04" : "SF8BW125", "0x05" : "SF7BW125", "0x06" : "SF7BW250"}
-    },
-    "0xFFA2" : {TYPE: 'ENUM', NAME: "adrProfile", 
-        VALUES: { "0x00" : "NETWORK_CONTROLLED", "0x01" : "MOBILE_LONG_RANGE", "0x02" : "MOBILE_LOW_POWER"}
-    },
-    "0xFFA3" : {TYPE: 'ENUM', NAME: "radioMode",
-        VALUES: { "0x00" : "LoRaWAN", "0x01" : "iQ D2D", "0x02" : "LoRaWAN & iQ D2D"}
-    },
-    "0xFFA4" : {TYPE: 'U8', NAME: "numberOfJoinAttempts"},
-    "0xFFA5" : {TYPE: 'U16', NAME: "linkCheckTimeframe"},
-    "0xFFA6" : {TYPE: 'ENUM', NAME: "dataRetransmission", 
-        VALUES: { "0x00" : "DISABLED", "0x01" : "ENABLED"}
-    },
-    "0xFFA7" : {TYPE: 'ENUM', NAME: "lorawanWatchdogAlarm",
-        VALUES: { "0x00" : "NORMAL", "0x01" : "ALARM"}
-    }
+var MESSAGES = {
+    MAC: "MAC COMMAND RECEIVED",
+    FUOTA: "FUOTA DATA RECEIVED",
+    FMP: "FIRMWARE MANAGEMENT DATA RECEIVED",
+    DOWNLINK_SUCCESS: "DOWNLINK COMMAND SUCCEEDED",
+    DOWNLINK_FAILURE: "DOWNLINK COMMAND FAILED",
+    FPORT_INCORRECT: "Incorrect fPort",
+    CMD_INVALID: "Invalid command",
+    CMD_REGISTER_NOT_FOUND: "Register not found in the device registers",
+    CMD_REGISTER_NOT_WRITABLE: "Register not writable",
+    CMD_REGISTER_NOT_READABLE: "Register not readable",
+    CMD_REGISTER_NUMBER_INVALID: "Invalid number of registers",
+    CMD_DATA_INVALID: "Invalid data in the command",
+    CMD_FPORT_INVALID: "Invalid fPort in the command",
+    CMD_TOO_LONG: "Command too long"
 };
 
-var DEVICE_SPECIFIC_REGISTERS = {
-
-    "0xEE3C" : {TYPE : 'STR', NAME : "electricalCabinet"},
-    "0xEE3D" : {TYPE : 'STR', NAME : "electricalGroup"},
-
-    "0x6000" : {TYPE: 'ENUM', NAME: "serialWatchdogAlarm", 
-        VALUES: { "0x00" : "NORMAL", "0x01" : "ALARM"}
-    },
-    "0x6001" : {TYPE: 'U8', NAME: "serialModbusSlaveId"},
-    "0x6002" : {TYPE: 'U8', NAME: "serialStopBits"},
-    "0x6003" : {TYPE: 'U8', NAME: "serialParity",
-        VALUES: { "0x00" : "NONE", "0x01" : "ODD", "0x02" : "EVEN"}
-    },
-    "0x6004" : {TYPE: 'U8', NAME: "serialDataWidth"},
-    "0x6005" : {TYPE: 'U32', NAME: "serialBaudRate"},
-    "0x6009" : {TYPE: 'U16', NAME: "serialModbusExecutionInterval"},
-    "0x600A" : {TYPE: 'U16', NAME: "serialModbusResponseTimeout"},
-    "0x600C" : {TYPE: 'U8', NAME: "serialModbusMaxRetries"},
-
-    "0x0000" : {TYPE : 'F32', NAME : "frequency", UNIT : "Hz"},
-    "0x0010" : {TYPE : 'I32', NAME : "phaseSequence"},
-
-    "0x0100" : {TYPE : 'F32', NAME : "voltageAvgLN", UNIT : "V"},
-    "0x0101" : {TYPE : 'F32', NAME : "voltageL1N", UNIT : "V"},
-    "0x0102" : {TYPE : 'F32', NAME : "voltageL2N", UNIT : "V"},
-    "0x0103" : {TYPE : 'F32', NAME : "voltageL3N", UNIT : "V"},
-    "0x0104" : {TYPE : 'F32', NAME : "voltageL1L2", UNIT : "V"},
-    "0x0105" : {TYPE : 'F32', NAME : "voltageL2L3", UNIT : "V"},
-    "0x0106" : {TYPE : 'F32', NAME : "voltageL3L1", UNIT : "V"},
-    "0x0107" : {TYPE : 'F32', NAME : "voltageAvgLL", UNIT : "V"},
-    "0x0111" : {TYPE : 'F32', NAME : "voltageThdL1", UNIT : "V"},
-    "0x0112" : {TYPE : 'F32', NAME : "voltageThdL2", UNIT : "V"},
-    "0x0113" : {TYPE : 'F32', NAME : "voltageThdL3", UNIT : "V"},
-
-    "0x0200" : {TYPE : 'F32', NAME : "currentTotal", UNIT : "A"},
-    "0x0201" : {TYPE : 'F32', NAME : "currentL1", UNIT : "A"},
-    "0x0202" : {TYPE : 'F32', NAME : "currentL2", UNIT : "A"},
-    "0x0203" : {TYPE : 'F32', NAME : "currentL3", UNIT : "A"},
-    "0x0204" : {TYPE : 'F32', NAME : "currentNeutral", UNIT : "A"},
-    "0x0211" : {TYPE : 'F32', NAME : "currentThdL1", UNIT : "A"},
-    "0x0212" : {TYPE : 'F32', NAME : "currentThdL2", UNIT : "A"},
-    "0x0213" : {TYPE : 'F32', NAME : "currentThdL3", UNIT : "A"},
-    "0x0220" : {TYPE : 'F32', NAME : "currentAvg", UNIT : "A"},
-    "0x0221" : {TYPE : 'F32', NAME : "currentAvgL1", UNIT : "A"},
-    "0x0222" : {TYPE : 'F32', NAME : "currentAvgL2", UNIT : "A"},
-    "0x0223" : {TYPE : 'F32', NAME : "currentAvgL3", UNIT : "A"},
-    "0x02D0" : {TYPE : 'F32', NAME : "currentDemandTotal", UNIT : "A"},
-    "0x02D1" : {TYPE : 'F32', NAME : "currentDemandL1", UNIT : "A"},
-    "0x02D2" : {TYPE : 'F32', NAME : "currentDemandL2", UNIT : "A"},
-    "0x02D3" : {TYPE : 'F32', NAME : "currentDemandL3", UNIT : "A"},
-    "0x02E0" : {TYPE : 'F32', NAME : "currentMaxDemandTotal", UNIT : "A"},
-    "0x02E1" : {TYPE : 'F32', NAME : "currentMaxDemandL1", UNIT : "A"},
-    "0x02E2" : {TYPE : 'F32', NAME : "currentMaxDemandL2", UNIT : "A"},
-    "0x02E3" : {TYPE : 'F32', NAME : "currentMaxDemandL3", UNIT : "A"},
-
-    "0x0300" : {TYPE : 'F32', NAME : "activePowerTotal", UNIT : "W"},
-    "0x0301" : {TYPE : 'F32', NAME : "activePowerL1", UNIT : "W"},
-    "0x0302" : {TYPE : 'F32', NAME : "activePowerL2", UNIT : "W"},
-    "0x0303" : {TYPE : 'F32', NAME : "activePowerL3", UNIT : "W"},
-    "0x0310" : {TYPE : 'F32', NAME : "activePowerImportDemand", UNIT : "W"},
-    "0x0320" : {TYPE : 'F32', NAME : "activePowerExportDemand", UNIT : "W"},
-    "0x0330" : {TYPE : 'F32', NAME : "activePowerImportMaxDemand", UNIT : "W"},
-    "0x0340" : {TYPE : 'F32', NAME : "activePowerExportMaxDemand", UNIT : "W"},
-
-    "0x0350" : {TYPE : 'F32', NAME : "reactivePowerTotal", UNIT : "VAr"},
-    "0x0351" : {TYPE : 'F32', NAME : "reactivePowerL1", UNIT : "VAr"},
-    "0x0352" : {TYPE : 'F32', NAME : "reactivePowerL2", UNIT : "VAr"},
-    "0x0353" : {TYPE : 'F32', NAME : "reactivePowerL3", UNIT : "VAr"},
-    "0x0360" : {TYPE : 'F32', NAME : "reactivePowerImportDemand", UNIT : "VAr"},
-    "0x0370" : {TYPE : 'F32', NAME : "reactivePowerExportDemand", UNIT : "VAr"},
-    "0x0380" : {TYPE : 'F32', NAME : "reactivePowerImportMaxDemand", UNIT : "VAr"},
-    "0x0390" : {TYPE : 'F32', NAME : "reactivePowerExportMaxDemand", UNIT : "VAr"},
-
-    "0x03A0" : {TYPE : 'F32', NAME : "apparentPowerTotal", UNIT : "VA"},
-    "0x03A1" : {TYPE : 'F32', NAME : "apparentPowerL1", UNIT : "VA"},
-    "0x03A2" : {TYPE : 'F32', NAME : "apparentPowerL2", UNIT : "VA"},
-    "0x03A3" : {TYPE : 'F32', NAME : "apparentPowerL3", UNIT : "VA"},
-    "0x03B0" : {TYPE : 'F32', NAME : "apparentPowerDemand", UNIT : "VA"},
-    "0x03C0" : {TYPE : 'F32', NAME : "apparentPowerMaxDemand", UNIT : "VA"},
-
-    "0x03D1" : {TYPE : 'F32', NAME : "phaseAngleL1", UNIT : "°"},
-    "0x03D2" : {TYPE : 'F32', NAME : "phaseAngleL2", UNIT : "°"},
-    "0x03D3" : {TYPE : 'F32', NAME : "phaseAngleL3", UNIT : "°"},
-
-    "0x03E1" : {TYPE : 'F32', NAME : "cosPhiL1"},
-    "0x03E2" : {TYPE : 'F32', NAME : "cosPhiL2"},
-    "0x03E3" : {TYPE : 'F32', NAME : "cosPhiL3"},
-
-    "0x03F0" : {TYPE : 'F32', NAME : "powerFactorSystem"},
-    "0x03F1" : {TYPE : 'F32', NAME : "powerFactorL1"},
-    "0x03F2" : {TYPE : 'F32', NAME : "powerFactorL2"},
-    "0x03F3" : {TYPE : 'F32', NAME : "powerFactorL3"},
-
-    "0x0400" : {TYPE : 'F64', NAME : "importActiveEnergySystem", UNIT : "kWh"},
-    "0x0401" : {TYPE : 'F64', NAME : "importActiveEnergyL1", UNIT : "kWh"},
-    "0x0402" : {TYPE : 'F64', NAME : "importActiveEnergyL2", UNIT : "kWh"},
-    "0x0403" : {TYPE : 'F64', NAME : "importActiveEnergyL3", UNIT : "kWh"},
-    "0x0410" : {TYPE : 'F64', NAME : "importActiveEnergySystemT1", UNIT : "kWh"},
-    "0x0411" : {TYPE : 'F64', NAME : "importActiveEnergyL1T1", UNIT : "kWh"},
-    "0x0412" : {TYPE : 'F64', NAME : "importActiveEnergyL2T1", UNIT : "kWh"},
-    "0x0413" : {TYPE : 'F64', NAME : "importActiveEnergyL3T1", UNIT : "kWh"},
-    "0x0420" : {TYPE : 'F64', NAME : "importActiveEnergySystemT2", UNIT : "kWh"},
-    "0x0421" : {TYPE : 'F64', NAME : "importActiveEnergyL1T2", UNIT : "kWh"},
-    "0x0422" : {TYPE : 'F64', NAME : "importActiveEnergyL2T2", UNIT : "kWh"},
-    "0x0423" : {TYPE : 'F64', NAME : "importActiveEnergyL3T2", UNIT : "kWh"},
-    "0x0430" : {TYPE : 'F64', NAME : "importActiveEnergySystemT3", UNIT : "kWh"},
-    "0x0431" : {TYPE : 'F64', NAME : "importActiveEnergyL1T3", UNIT : "kWh"},
-    "0x0432" : {TYPE : 'F64', NAME : "importActiveEnergyL2T3", UNIT : "kWh"},
-    "0x0433" : {TYPE : 'F64', NAME : "importActiveEnergyL3T3", UNIT : "kWh"},
-    "0x0440" : {TYPE : 'F64', NAME : "importActiveEnergySystemT4", UNIT : "kWh"},
-    "0x0441" : {TYPE : 'F64', NAME : "importActiveEnergyL1T4", UNIT : "kWh"},
-    "0x0442" : {TYPE : 'F64', NAME : "importActiveEnergyL2T4", UNIT : "kWh"},
-    "0x0443" : {TYPE : 'F64', NAME : "importActiveEnergyL3T4", UNIT : "kWh"},
-    "0x04A0" : {TYPE : 'F64', NAME : "importActiveEnergySystemPartial", UNIT : "kWh"},
-    "0x04A1" : {TYPE : 'F64', NAME : "importActiveEnergyL1Partial", UNIT : "kWh"},
-    "0x04A2" : {TYPE : 'F64', NAME : "importActiveEnergyL2Partial", UNIT : "kWh"},
-    "0x04A3" : {TYPE : 'F64', NAME : "importActiveEnergyL3Partial", UNIT : "kWh"},
-
-    "0x0500" : {TYPE : 'F64', NAME : "exportActiveEnergySystem", UNIT : "kWh"},
-    "0x0501" : {TYPE : 'F64', NAME : "exportActiveEnergyL1", UNIT : "kWh"},
-    "0x0502" : {TYPE : 'F64', NAME : "exportActiveEnergyL2", UNIT : "kWh"},
-    "0x0503" : {TYPE : 'F64', NAME : "exportActiveEnergyL3", UNIT : "kWh"},
-    "0x0510" : {TYPE : 'F64', NAME : "exportActiveEnergySystemT1", UNIT : "kWh"},
-    "0x0511" : {TYPE : 'F64', NAME : "exportActiveEnergyL1T1", UNIT : "kWh"},
-    "0x0512" : {TYPE : 'F64', NAME : "exportActiveEnergyL2T1", UNIT : "kWh"},
-    "0x0513" : {TYPE : 'F64', NAME : "exportActiveEnergyL3T1", UNIT : "kWh"},
-    "0x0520" : {TYPE : 'F64', NAME : "exportActiveEnergySystemT2", UNIT : "kWh"},
-    "0x0521" : {TYPE : 'F64', NAME : "exportActiveEnergyL1T2", UNIT : "kWh"},
-    "0x0522" : {TYPE : 'F64', NAME : "exportActiveEnergyL2T2", UNIT : "kWh"},
-    "0x0523" : {TYPE : 'F64', NAME : "exportActiveEnergyL3T2", UNIT : "kWh"},
-    "0x0530" : {TYPE : 'F64', NAME : "exportActiveEnergySystemT3", UNIT : "kWh"},
-    "0x0531" : {TYPE : 'F64', NAME : "exportActiveEnergyL1T3", UNIT : "kWh"},
-    "0x0532" : {TYPE : 'F64', NAME : "exportActiveEnergyL2T3", UNIT : "kWh"},
-    "0x0533" : {TYPE : 'F64', NAME : "exportActiveEnergyL3T3", UNIT : "kWh"},
-    "0x0540" : {TYPE : 'F64', NAME : "exportActiveEnergySystemT4", UNIT : "kWh"},
-    "0x0541" : {TYPE : 'F64', NAME : "exportActiveEnergyL1T4", UNIT : "kWh"},
-    "0x0542" : {TYPE : 'F64', NAME : "exportActiveEnergyL2T4", UNIT : "kWh"},
-    "0x0543" : {TYPE : 'F64', NAME : "exportActiveEnergyL3T4", UNIT : "kWh"},
-    "0x05A0" : {TYPE : 'F64', NAME : "exportActiveEnergySystemPartial", UNIT : "kWh"},
-    "0x05A1" : {TYPE : 'F64', NAME : "exportActiveEnergyL1Partial", UNIT : "kWh"},
-    "0x05A2" : {TYPE : 'F64', NAME : "exportActiveEnergyL2Partial", UNIT : "kWh"},
-    "0x05A3" : {TYPE : 'F64', NAME : "exportActiveEnergyL3Partial", UNIT : "kWh"},
-
-    "0x0600" : {TYPE : 'F64', NAME : "importReactiveEnergySystem", UNIT : "kVArh"},
-    "0x0601" : {TYPE : 'F64', NAME : "importReactiveEnergyL1", UNIT : "kVArh"},
-    "0x0602" : {TYPE : 'F64', NAME : "importReactiveEnergyL2", UNIT : "kVArh"},
-    "0x0603" : {TYPE : 'F64', NAME : "importReactiveEnergyL3", UNIT : "kVArh"},
-    "0x0610" : {TYPE : 'F64', NAME : "importReactiveEnergySystemT1", UNIT : "kVArh"},
-    "0x0611" : {TYPE : 'F64', NAME : "importReactiveEnergyL1T1", UNIT : "kVArh"},
-    "0x0612" : {TYPE : 'F64', NAME : "importReactiveEnergyL2T1", UNIT : "kVArh"},
-    "0x0613" : {TYPE : 'F64', NAME : "importReactiveEnergyL3T1", UNIT : "kVArh"},
-    "0x0620" : {TYPE : 'F64', NAME : "importReactiveEnergySystemT2", UNIT : "kVArh"},
-    "0x0621" : {TYPE : 'F64', NAME : "importReactiveEnergyL1T2", UNIT : "kVArh"},
-    "0x0622" : {TYPE : 'F64', NAME : "importReactiveEnergyL2T2", UNIT : "kVArh"},
-    "0x0623" : {TYPE : 'F64', NAME : "importReactiveEnergyL3T2", UNIT : "kVArh"},
-    "0x0630" : {TYPE : 'F64', NAME : "importReactiveEnergySystemT3", UNIT : "kVArh"},
-    "0x0631" : {TYPE : 'F64', NAME : "importReactiveEnergyL1T3", UNIT : "kVArh"},
-    "0x0632" : {TYPE : 'F64', NAME : "importReactiveEnergyL2T3", UNIT : "kVArh"},
-    "0x0633" : {TYPE : 'F64', NAME : "importReactiveEnergyL3T3", UNIT : "kVArh"},
-    "0x0640" : {TYPE : 'F64', NAME : "importReactiveEnergySystemT4", UNIT : "kVArh"},
-    "0x0641" : {TYPE : 'F64', NAME : "importReactiveEnergyL1T4", UNIT : "kVArh"},
-    "0x0642" : {TYPE : 'F64', NAME : "importReactiveEnergyL2T4", UNIT : "kVArh"},
-    "0x0643" : {TYPE : 'F64', NAME : "importReactiveEnergyL3T4", UNIT : "kVArh"},
-    "0x06A0" : {TYPE : 'F64', NAME : "importReactiveEnergySystemPartial", UNIT : "kVArh"},
-    "0x06A1" : {TYPE : 'F64', NAME : "importReactiveEnergyL1Partial", UNIT : "kVArh"},
-    "0x06A2" : {TYPE : 'F64', NAME : "importReactiveEnergyL2Partial", UNIT : "kVArh"},
-    "0x06A3" : {TYPE : 'F64', NAME : "importReactiveEnergyL3Partial", UNIT : "kVArh"},
-
-    "0x0700" : {TYPE : 'F64', NAME : "exportReactiveEnergySystem", UNIT : "kVArh"},
-    "0x0701" : {TYPE : 'F64', NAME : "exportReactiveEnergyL1", UNIT : "kVArh"},
-    "0x0702" : {TYPE : 'F64', NAME : "exportReactiveEnergyL2", UNIT : "kVArh"},
-    "0x0703" : {TYPE : 'F64', NAME : "exportReactiveEnergyL3", UNIT : "kVArh"},
-    "0x0710" : {TYPE : 'F64', NAME : "exportReactiveEnergySystemT1", UNIT : "kVArh"},
-    "0x0711" : {TYPE : 'F64', NAME : "exportReactiveEnergyL1T1", UNIT : "kVArh"},
-    "0x0712" : {TYPE : 'F64', NAME : "exportReactiveEnergyL2T1", UNIT : "kVArh"},
-    "0x0713" : {TYPE : 'F64', NAME : "exportReactiveEnergyL3T1", UNIT : "kVArh"},
-    "0x0720" : {TYPE : 'F64', NAME : "exportReactiveEnergySystemT2", UNIT : "kVArh"},
-    "0x0721" : {TYPE : 'F64', NAME : "exportReactiveEnergyL1T2", UNIT : "kVArh"},
-    "0x0722" : {TYPE : 'F64', NAME : "exportReactiveEnergyL2T2", UNIT : "kVArh"},
-    "0x0723" : {TYPE : 'F64', NAME : "exportReactiveEnergyL3T2", UNIT : "kVArh"},
-    "0x0730" : {TYPE : 'F64', NAME : "exportReactiveEnergySystemT3", UNIT : "kVArh"},
-    "0x0731" : {TYPE : 'F64', NAME : "exportReactiveEnergyL1T3", UNIT : "kVArh"},
-    "0x0732" : {TYPE : 'F64', NAME : "exportReactiveEnergyL2T3", UNIT : "kVArh"},
-    "0x0733" : {TYPE : 'F64', NAME : "exportReactiveEnergyL3T3", UNIT : "kVArh"},
-    "0x0740" : {TYPE : 'F64', NAME : "exportReactiveEnergySystemT4", UNIT : "kVArh"},
-    "0x0741" : {TYPE : 'F64', NAME : "exportReactiveEnergyL1T4", UNIT : "kVArh"},
-    "0x0742" : {TYPE : 'F64', NAME : "exportReactiveEnergyL2T4", UNIT : "kVArh"},
-    "0x0743" : {TYPE : 'F64', NAME : "exportReactiveEnergyL3T4", UNIT : "kVArh"},
-    "0x07A0" : {TYPE : 'F64', NAME : "exportReactiveEnergySystemPartial", UNIT : "kVArh"},
-    "0x07A1" : {TYPE : 'F64', NAME : "exportReactiveEnergyL1Partial", UNIT : "kVArh"},
-    "0x07A2" : {TYPE : 'F64', NAME : "exportReactiveEnergyL2Partial", UNIT : "kVArh"},
-    "0x07A3" : {TYPE : 'F64', NAME : "exportReactiveEnergyL3Partial", UNIT : "kVArh"},
-
-    "0x0800" : {TYPE : 'F64', NAME : "activeEnergyBalanceSystem", UNIT : "kWh"},
-    "0x0801" : {TYPE : 'F64', NAME : "activeEnergyBalanceL1", UNIT : "kWh"},
-    "0x0802" : {TYPE : 'F64', NAME : "activeEnergyBalanceL2", UNIT : "kWh"},
-    "0x0803" : {TYPE : 'F64', NAME : "activeEnergyBalanceL3", UNIT : "kWh"},
-
-    "0x08F0" : {TYPE : 'F64', NAME : "reactiveEnergyBalanceSystem", UNIT : "kVArh"},
-    "0x08F1" : {TYPE : 'F64', NAME : "reactiveEnergyBalanceL1", UNIT : "kVArh"},
-    "0x08F2" : {TYPE : 'F64', NAME : "reactiveEnergyBalanceL2", UNIT : "kVArh"},
-    "0x08F3" : {TYPE : 'F64', NAME : "reactiveEnergyBalanceL3", UNIT : "kVArh"},
-
-    "0xA100" : {TYPE : 'F64', NAME : "reactiveEnergyZone1System", UNIT : "kVArh"},
-    "0xA101" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L1", UNIT : "kVArh"},
-    "0xA102" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L2", UNIT : "kVArh"},
-    "0xA103" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L3", UNIT : "kVArh"},
-    "0xA110" : {TYPE : 'F64', NAME : "reactiveEnergyZone1SystemT1", UNIT : "kVArh"},
-    "0xA111" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L1T1", UNIT : "kVArh"},
-    "0xA112" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L2T1", UNIT : "kVArh"},
-    "0xA113" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L3T1", UNIT : "kVArh"},
-    "0xA120" : {TYPE : 'F64', NAME : "reactiveEnergyZone1SystemT2", UNIT : "kVArh"},
-    "0xA121" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L1T2", UNIT : "kVArh"},
-    "0xA122" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L2T2", UNIT : "kVArh"},
-    "0xA123" : {TYPE : 'F64', NAME : "reactiveEnergyZone1L3T2", UNIT : "kVArh"},
-
-    "0xA200" : {TYPE : 'F64', NAME : "reactiveEnergyZone2System", UNIT : "kVArh"},
-    "0xA201" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L1", UNIT : "kVArh"},
-    "0xA202" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L2", UNIT : "kVArh"},
-    "0xA203" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L3", UNIT : "kVArh"},
-    "0xA210" : {TYPE : 'F64', NAME : "reactiveEnergyZone2SystemT1", UNIT : "kVArh"},
-    "0xA211" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L1T1", UNIT : "kVArh"},
-    "0xA212" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L2T1", UNIT : "kVArh"},
-    "0xA213" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L3T1", UNIT : "kVArh"},
-    "0xA220" : {TYPE : 'F64', NAME : "reactiveEnergyZone2SystemT2", UNIT : "kVArh"},
-    "0xA221" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L1T2", UNIT : "kVArh"},
-    "0xA222" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L2T2", UNIT : "kVArh"},
-    "0xA223" : {TYPE : 'F64', NAME : "reactiveEnergyZone2L3T2", UNIT : "kVArh"},
-
-    "0xA300" : {TYPE : 'F64', NAME : "reactiveEnergyZone3System", UNIT : "kVArh"},
-    "0xA301" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L1", UNIT : "kVArh"},
-    "0xA302" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L2", UNIT : "kVArh"},
-    "0xA303" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L3", UNIT : "kVArh"},
-    "0xA310" : {TYPE : 'F64', NAME : "reactiveEnergyZone3SystemT1", UNIT : "kVArh"},
-    "0xA311" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L1T1", UNIT : "kVArh"},
-    "0xA312" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L2T1", UNIT : "kVArh"},
-    "0xA313" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L3T1", UNIT : "kVArh"},
-    "0xA320" : {TYPE : 'F64', NAME : "reactiveEnergyZone3SystemT2", UNIT : "kVArh"},
-    "0xA321" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L1T2", UNIT : "kVArh"},
-    "0xA322" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L2T2", UNIT : "kVArh"},
-    "0xA323" : {TYPE : 'F64', NAME : "reactiveEnergyZone3L3T2", UNIT : "kVArh"},
-
-    "0xA400" : {TYPE : 'F64', NAME : "reactiveEnergyZone4System", UNIT : "kVArh"},
-    "0xA401" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L1", UNIT : "kVArh"},
-    "0xA402" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L2", UNIT : "kVArh"},
-    "0xA403" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L3", UNIT : "kVArh"},
-    "0xA410" : {TYPE : 'F64', NAME : "reactiveEnergyZone4SystemT1", UNIT : "kVArh"},
-    "0xA411" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L1T1", UNIT : "kVArh"},
-    "0xA412" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L2T1", UNIT : "kVArh"},
-    "0xA413" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L3T1", UNIT : "kVArh"},
-    "0xA420" : {TYPE : 'F64', NAME : "reactiveEnergyZone4SystemT2", UNIT : "kVArh"},
-    "0xA421" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L1T2", UNIT : "kVArh"},
-    "0xA422" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L2T2", UNIT : "kVArh"},
-    "0xA423" : {TYPE : 'F64', NAME : "reactiveEnergyZone4L3T2", UNIT : "kVArh"},
-
-    "0x2100" : {TYPE: 'FLAG32', NAME: "digitalInputFlags",
-        FLAGS: [
-            { NAME : "digitalInput1Flag", BIT: 0, FALSE: "NO_ERROR", TRUE: "ERROR"},
-            { NAME : "digitalInput2Flag", BIT: 1, FALSE: "NO_ERROR", TRUE: "ERROR"}
-        ]
-    },
-    "0x2110" : {TYPE : 'U32', NAME : "digitalInput1Counter"},
-    "0x2111" : {TYPE : 'U32', NAME : "digitalInput1OnTime"},
-    "0x2120" : {TYPE : 'U32', NAME : "digitalInput2Counter"},
-    "0x2121" : {TYPE : 'U32', NAME : "digitalInput2OnTime"},
-
-    "0xEEA0" : {TYPE: 'FLAG32', NAME: "diagnosticAlarms",
-        FLAGS: [
-            { NAME : "alarmLowVoltageLN", BIT: 0, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmLowCurrent", BIT: 1, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmLowActivePower", BIT: 2, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmLowReactivePower", BIT: 3, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmLowApparentPower", BIT: 4, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmLowPowerFactor", BIT: 5, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmLowFrequency", BIT: 6, FALSE: "NO_ALARM", TRUE: "ALARM"},
-
-            { NAME : "alarmHighVoltageLN", BIT: 16, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmHighCurrent", BIT: 17, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmHighActivePower", BIT: 18, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmHighReactivePower", BIT: 19, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmHighApparentPower", BIT: 20, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmHighPowerFactor", BIT: 21, FALSE: "NO_ALARM", TRUE: "ALARM"},
-            { NAME : "alarmHighFrequency", BIT: 22, FALSE: "NO_ALARM", TRUE: "ALARM"}
-        ]
-    },
-    "0xEEE0" : {TYPE: 'FLAG32', NAME: "diagnosticErrorFlags",
-        FLAGS: [
-            { NAME : "pulse1ErrorFlag", BIT: 0, FALSE: "NO_ERROR", TRUE: "ERROR"},
-            { NAME : "pulse2ErrorFlag", BIT: 1, FALSE: "NO_ERROR", TRUE: "ERROR"},
-            { NAME : "phaseSequenceErrorFlag", BIT: 2, FALSE: "NO_ERROR", TRUE: "ERROR"},
-            { NAME : "currentDirectionErrorFlag", BIT: 3, FALSE: "NO_ERROR", TRUE: "ERROR"}
-        ]
-    }
+var LIMITS = {
+    COMMAND_REGISTERS: 10,      // registers per Config, Reading or Periodic command
+    STRING_LENGTH: 15,          // firmware rejects strings longer than 15 characters
+    DOWNLINK_SIZE: 64           // firmware drops longer downlinks without a status uplink
 };
 
+// Sources 0 to 5 are the meter sources (5: the app switches digital output 2, meter Remote Control);
+// 6 and 7 are relay logic features of the app that also drive digital output 2 in Remote Control.
+var DIGITAL_OUTPUT_SOURCE_VALUES = {0: "DISABLED", 1: "IMPORT_ACTIVE_ENERGY", 2: "EXPORT_ACTIVE_ENERGY",
+    3: "IMPORT_REACTIVE_ENERGY", 4: "EXPORT_REACTIVE_ENERGY", 5: "REMOTE", 6: "INSTANTANEOUS_CURRENT", 7: "VOLTAGE"};
+var DIGITAL_OUTPUT_MODE_VALUES = {0: "ENERGY", 1: "ALARM"};
+var DIGITAL_OUTPUT_MULTIPLIER_VALUES = {0: "x0.001", 1: "x0.01", 2: "x0.1", 3: "x1", 4: "x10", 5: "x100", 6: "x1000"};
+var DIGITAL_INPUT_SOURCE_VALUES = {0: "COUNTER", 1: "TARIFF"};
+var DIGITAL_INPUT_EDGE_VALUES = {0: "RISING", 1: "FALLING", 2: "BOTH"};
+var DEMAND_METHOD_VALUES = {0: "FIXED", 1: "SLIDING", 2: "ROLLING"};
 
-function decodeRegisters(bytes)
-{
-    var decoded = {};
-    var index = 0;
-    while(index+2 < bytes.length)
-    {
-        var regAddr = getRegAddr(bytes, index);;
-        index = index + 2;
-        var reg = getRegister(regAddr)
-        if(reg == null){
-            index = " at index " + (index - 1);
-            decoded[UPLINK.ERROR_NAME] = UPLINK.ERRORS.REGISTER + regAddr + index;
-            return decoded;
-        }
-        // Decoding
-        reg.INDEX = index;
-        reg = decodeRegister(bytes, reg);
-        if(reg.SIZE == 0){
-            index = " at index " + (index - 1);
-            decoded[UPLINK.ERROR_NAME] = UPLINK.ERRORS.REGISTER + regAddr + index;
-            return decoded;
-        }
-        decoded[reg.NAME] = reg.DATA;
-        index = index + reg.SIZE;
-    }
-    return decoded;
+var NORMAL_ALARM = {0: "NORMAL", 1: "ALARM"};
+var SERIAL_PARITY_VALUES = {0: "NONE", 1: "ODD", 2: "EVEN"};
+var SERIAL_BAUD_RATES = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+
+var OFF_ON = {0: "OFF", 1: "ON"};
+var DISABLED_ENABLED = {0: "DISABLED", 1: "ENABLED"};
+var INVALID_VALID = {0: "INVALID", 1: "VALID"};
+var CONTROL_MODE_VALUES = {0: "NORMAL", 1: "MANUAL_ON", 2: "MANUAL_OFF"};
+var DESIRED_STATE_VALUES = {0: "AUTO", 1: "ON_BY_DL", 2: "OFF_BY_DL", 3: "ON_BY_BLE", 4: "OFF_BY_BLE"};
+var RELAY_REASON_VALUES = {0: "DEFAULT", 1: "DOWNLINK", 2: "BLE", 3: "WEEK_TIMER", 4: "MANUAL", 5: "MOMENTARY",
+    6: "PROTECTION", 7: "WATCHDOG"};
+var PROTECTION_TRIP_VALUES = {0: "NONE", 1: "OVERHEAT", 2: "VOLTAGE", 3: "CURRENT", 4: "PREPAID"};
+
+/* Relay state info: 4 bytes relay state, control mode, reason, active protection trip. */
+function decodeRelayStateInfo(bytes, index) {
+    return {
+        state: enumLabel(OFF_ON, bytes[index]),
+        controlMode: enumLabel(CONTROL_MODE_VALUES, bytes[index + 1]),
+        reason: enumLabel(RELAY_REASON_VALUES, bytes[index + 2]),
+        protectionTrip: enumLabel(PROTECTION_TRIP_VALUES, bytes[index + 3])
+    };
 }
 
-function decodeFmpAnswers(bytes)
-{
-    var decoded = {};
+/* Relay change of state alarm: relay state info before, then after the change. */
+function decodeRelayChangeOfState(bytes, index) {
+    return {
+        previous: decodeRelayStateInfo(bytes, index),
+        current: decodeRelayStateInfo(bytes, index + 4)
+    };
+}
+
+/*
+ * Register table: one entry per register address, used to decode uplinks AND
+ * to encode downlinks, so the two directions can never disagree on an address.
+ *
+ *   NAME        key in the decoded object, Param / Registers name in commands
+ *   TYPE        U8 U16 U24 U32 I8 I16 I32 F32 F64 STR VER VER3 ENUM FLAGS STRUCT
+ *   RW          what the firmware accepts over LoRaWAN: "R", "W", "RW" or "" (uplink only)
+ *   RESOLUTION  decoded value = raw * RESOLUTION (and raw = value / RESOLUTION when encoding)
+ *   DECIMALS    rounding of scaled and float values (default 3, F64 default 6)
+ *   VALUES      ENUM labels by raw value; unknown values decode as "UNKNOWN (<raw>)"
+ *   FLAGS       FLAGS bits: [{NAME: ..., BIT: n, VALUES: [label when 0, label when 1]}]
+ *   SIZE        byte size of FLAGS and STRUCT registers
+ *   DECODE      STRUCT decoder: function (bytes, index) returning the decoded value
+ *   MIN, MAX    accepted range of written values (in decoded units; ENUM: raw values); STR: MAX length
+ *   ALLOWED     list of the only accepted written values (for example serial baud rates)
+ *   MAX_DEMAND  true for the registers a MaxDemand command may select
+ */
+var REGISTERS = {
+
+    /* Uplink header of periodic, alarm and max demand uplinks (not a register) */
+    "0xFF01": {NAME: "dataloggerTimestamp", TYPE: "U32", RW: ""},
+
+    /* Generic registers, common to every YOBIIQ SDK device */
+    "0xFF32": {NAME: "buildingName", TYPE: "STR", RW: "RW"},
+    "0xFF33": {NAME: "buildingRoom", TYPE: "STR", RW: "RW"},
+    "0xFF34": {NAME: "deviceName", TYPE: "STR", RW: "RW"},
+    "0xFF64": {NAME: "deviceStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "NORMAL_MODE", 1: "SPECIAL_MODE"}},
+    "0xFF65": {NAME: "manufacturer", TYPE: "STR", RW: "R"},
+    "0xFF66": {NAME: "originalEquipmentManufacturer", TYPE: "STR", RW: "R"},
+    "0xFF67": {NAME: "deviceModel", TYPE: "STR", RW: "R"},
+    "0xFF68": {NAME: "deviceSerialNumber", TYPE: "U32", RW: "R"},
+    "0xFF69": {NAME: "firmwareVersion", TYPE: "VER", RW: "R"},
+    "0xFF6A": {NAME: "hardwareVersion", TYPE: "VER", RW: "R"},
+    "0xFF6B": {NAME: "externalPowerStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "BATTERY_POWER", 1: "MAINS_POWER"}},
+    "0xFF6C": {NAME: "batteryVoltage", TYPE: "U8", RW: "R", RESOLUTION: 0.1, DECIMALS: 1},
+    "0xFF6D": {NAME: "batteryPercentage", TYPE: "U8", RW: "R"},
+    "0xFF6F": {NAME: "rebootDevice", TYPE: "U8", RW: "W", MIN: 1, MAX: 1},
+    "0xFF78": {NAME: "internalCircuitTemperatureAlarm", TYPE: "ENUM", RW: "R", VALUES: {0: "NORMAL", 1: "ALARM"}},
+    "0xFF79": {NAME: "internalCircuitTemperatureNumberOfAlarms", TYPE: "U32", RW: "R"},
+    "0xFF7A": {NAME: "internalCircuitTemperature", TYPE: "I16", RW: "R", RESOLUTION: 0.01, DECIMALS: 2},
+    "0xFF7B": {NAME: "internalCircuitHumidity", TYPE: "U8", RW: "R"},
+    "0xFF82": {NAME: "ambientTemperature", TYPE: "I16", RW: "R", RESOLUTION: 0.01, DECIMALS: 2},
+    "0xFF83": {NAME: "ambientHumidity", TYPE: "U8", RW: "R"},
+    "0xFF95": {NAME: "restartLoRaWAN", TYPE: "U8", RW: "W", MIN: 1, MAX: 1},
+    "0xFF96": {NAME: "joinStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "OFFLINE", 1: "ONLINE"}},
+    "0xFF97": {NAME: "radioModule", TYPE: "STR", RW: "R"},
+    "0xFF98": {NAME: "lorawanRegion", TYPE: "ENUM", RW: "R", VALUES: {1: "EU868", 2: "AS923-1", 3: "US915",
+        4: "AU915", 5: "CN470", 6: "WW2G4", 7: "AS923-2", 8: "AS923-3", 9: "IN865", 10: "KR920", 11: "RU864",
+        12: "CN470-RP1.0", 13: "AS923-4"}},
+    "0xFF99": {NAME: "lorawanVersion", TYPE: "VER3", RW: "R"},
+    "0xFF9D": {NAME: "applicationPort", TYPE: "U8", RW: "R"},
+    "0xFF9E": {NAME: "joinType", TYPE: "ENUM", RW: "R", VALUES: {1: "OTAA"}},
+    "0xFF9F": {NAME: "deviceClass", TYPE: "ENUM", RW: "RW", VALUES: {0: "CLASS_A", 1: "CLASS_B", 2: "CLASS_C"}},
+    "0xFFA0": {NAME: "adr", TYPE: "ENUM", RW: "RW", VALUES: {0: "DISABLED", 1: "ENABLED"}},
+    "0xFFA1": {NAME: "sf", TYPE: "ENUM", RW: "RW", VALUES: {0: "SF12BW125", 1: "SF11BW125", 2: "SF10BW125",
+        3: "SF9BW125", 4: "SF8BW125", 5: "SF7BW125", 6: "SF7BW250"}},
+    "0xFFA2": {NAME: "adrProfile", TYPE: "ENUM", RW: "RW", VALUES: {0: "NETWORK_CONTROLLED",
+        1: "MOBILE_LONG_RANGE", 2: "MOBILE_LOW_POWER"}},
+    "0xFFA3": {NAME: "radioMode", TYPE: "ENUM", RW: "RW", VALUES: {0: "LORAWAN", 1: "IQ_D2D",
+        2: "LORAWAN_AND_IQ_D2D"}},
+    "0xFFA4": {NAME: "numberOfJoinAttempts", TYPE: "U8", RW: "RW"},
+    "0xFFA5": {NAME: "linkCheckTimeframe", TYPE: "U16", RW: "RW", MIN: 1},
+    "0xFFA6": {NAME: "dataRetransmission", TYPE: "ENUM", RW: "RW", VALUES: {0: "DISABLED", 1: "ENABLED"}},
+    "0xFFA7": {NAME: "lorawanWatchdogAlarm", TYPE: "ENUM", RW: "R", VALUES: {0: "NORMAL", 1: "ALARM"}},
+
+    /* Measurements, float32 unless noted */
+    "0x0000": {NAME: "frequency", TYPE: "F32", RW: "R"},
+    "0x0010": {NAME: "phaseSequence", TYPE: "I32", RW: "R"},
+    "0x0100": {NAME: "voltageAvgLN", TYPE: "F32", RW: "R"},
+    "0x0101": {NAME: "voltageL1N", TYPE: "F32", RW: "R"},
+    "0x0102": {NAME: "voltageL2N", TYPE: "F32", RW: "R"},
+    "0x0103": {NAME: "voltageL3N", TYPE: "F32", RW: "R"},
+    "0x0104": {NAME: "voltageL1L2", TYPE: "F32", RW: "R"},
+    "0x0105": {NAME: "voltageL2L3", TYPE: "F32", RW: "R"},
+    "0x0106": {NAME: "voltageL3L1", TYPE: "F32", RW: "R"},
+    "0x0107": {NAME: "voltageAvgLL", TYPE: "F32", RW: "R"},
+    "0x0111": {NAME: "voltageThdL1", TYPE: "F32", RW: "R"},
+    "0x0112": {NAME: "voltageThdL2", TYPE: "F32", RW: "R"},
+    "0x0113": {NAME: "voltageThdL3", TYPE: "F32", RW: "R"},
+    "0x0200": {NAME: "currentTotal", TYPE: "F32", RW: "R"},
+    "0x0201": {NAME: "currentL1", TYPE: "F32", RW: "R"},
+    "0x0202": {NAME: "currentL2", TYPE: "F32", RW: "R"},
+    "0x0203": {NAME: "currentL3", TYPE: "F32", RW: "R"},
+    "0x0204": {NAME: "currentNeutral", TYPE: "F32", RW: "R"},
+    "0x0211": {NAME: "currentThdL1", TYPE: "F32", RW: "R"},
+    "0x0212": {NAME: "currentThdL2", TYPE: "F32", RW: "R"},
+    "0x0213": {NAME: "currentThdL3", TYPE: "F32", RW: "R"},
+    "0x0220": {NAME: "currentAvg", TYPE: "F32", RW: "R"},
+    "0x0221": {NAME: "currentAvgL1", TYPE: "F32", RW: "R"},
+    "0x0222": {NAME: "currentAvgL2", TYPE: "F32", RW: "R"},
+    "0x0223": {NAME: "currentAvgL3", TYPE: "F32", RW: "R"},
+    "0x02D0": {NAME: "currentDemandTotal", TYPE: "F32", RW: "R"},
+    "0x02D1": {NAME: "currentDemandL1", TYPE: "F32", RW: "R"},
+    "0x02D2": {NAME: "currentDemandL2", TYPE: "F32", RW: "R"},
+    "0x02D3": {NAME: "currentDemandL3", TYPE: "F32", RW: "R"},
+    "0x02E0": {NAME: "currentMaxDemandTotal", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x02E1": {NAME: "currentMaxDemandL1", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x02E2": {NAME: "currentMaxDemandL2", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x02E3": {NAME: "currentMaxDemandL3", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x0300": {NAME: "activePowerTotal", TYPE: "F32", RW: "R"},
+    "0x0301": {NAME: "activePowerL1", TYPE: "F32", RW: "R"},
+    "0x0302": {NAME: "activePowerL2", TYPE: "F32", RW: "R"},
+    "0x0303": {NAME: "activePowerL3", TYPE: "F32", RW: "R"},
+    "0x0310": {NAME: "activePowerImportDemand", TYPE: "F32", RW: "R"},
+    "0x0320": {NAME: "activePowerExportDemand", TYPE: "F32", RW: "R"},
+    "0x0330": {NAME: "activePowerImportMaxDemand", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x0340": {NAME: "activePowerExportMaxDemand", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x0350": {NAME: "reactivePowerTotal", TYPE: "F32", RW: "R"},
+    "0x0351": {NAME: "reactivePowerL1", TYPE: "F32", RW: "R"},
+    "0x0352": {NAME: "reactivePowerL2", TYPE: "F32", RW: "R"},
+    "0x0353": {NAME: "reactivePowerL3", TYPE: "F32", RW: "R"},
+    "0x0360": {NAME: "reactivePowerImportDemand", TYPE: "F32", RW: "R"},
+    "0x0370": {NAME: "reactivePowerExportDemand", TYPE: "F32", RW: "R"},
+    "0x0380": {NAME: "reactivePowerImportMaxDemand", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x0390": {NAME: "reactivePowerExportMaxDemand", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x03A0": {NAME: "apparentPowerTotal", TYPE: "F32", RW: "R"},
+    "0x03A1": {NAME: "apparentPowerL1", TYPE: "F32", RW: "R"},
+    "0x03A2": {NAME: "apparentPowerL2", TYPE: "F32", RW: "R"},
+    "0x03A3": {NAME: "apparentPowerL3", TYPE: "F32", RW: "R"},
+    "0x03B0": {NAME: "apparentPowerDemand", TYPE: "F32", RW: "R"},
+    "0x03C0": {NAME: "apparentPowerMaxDemand", TYPE: "F32", RW: "R", MAX_DEMAND: true},
+    "0x03D1": {NAME: "phaseAngleL1", TYPE: "F32", RW: "R"},
+    "0x03D2": {NAME: "phaseAngleL2", TYPE: "F32", RW: "R"},
+    "0x03D3": {NAME: "phaseAngleL3", TYPE: "F32", RW: "R"},
+    "0x03E1": {NAME: "cosPhiL1", TYPE: "F32", RW: "R"},
+    "0x03E2": {NAME: "cosPhiL2", TYPE: "F32", RW: "R"},
+    "0x03E3": {NAME: "cosPhiL3", TYPE: "F32", RW: "R"},
+    "0x03F0": {NAME: "powerFactorSystem", TYPE: "F32", RW: "R"},
+    "0x03F1": {NAME: "powerFactorL1", TYPE: "F32", RW: "R"},
+    "0x03F2": {NAME: "powerFactorL2", TYPE: "F32", RW: "R"},
+    "0x03F3": {NAME: "powerFactorL3", TYPE: "F32", RW: "R"},
+
+    /* Energies, float64 (kWh, kVArh) */
+    "0x0400": {NAME: "importActiveEnergySystem", TYPE: "F64", RW: "R"},
+    "0x0401": {NAME: "importActiveEnergyL1", TYPE: "F64", RW: "R"},
+    "0x0402": {NAME: "importActiveEnergyL2", TYPE: "F64", RW: "R"},
+    "0x0403": {NAME: "importActiveEnergyL3", TYPE: "F64", RW: "R"},
+    "0x0410": {NAME: "importActiveEnergySystemT1", TYPE: "F64", RW: "R"},
+    "0x0411": {NAME: "importActiveEnergyL1T1", TYPE: "F64", RW: "R"},
+    "0x0412": {NAME: "importActiveEnergyL2T1", TYPE: "F64", RW: "R"},
+    "0x0413": {NAME: "importActiveEnergyL3T1", TYPE: "F64", RW: "R"},
+    "0x0420": {NAME: "importActiveEnergySystemT2", TYPE: "F64", RW: "R"},
+    "0x0421": {NAME: "importActiveEnergyL1T2", TYPE: "F64", RW: "R"},
+    "0x0422": {NAME: "importActiveEnergyL2T2", TYPE: "F64", RW: "R"},
+    "0x0423": {NAME: "importActiveEnergyL3T2", TYPE: "F64", RW: "R"},
+    "0x0430": {NAME: "importActiveEnergySystemT3", TYPE: "F64", RW: "R"},
+    "0x0431": {NAME: "importActiveEnergyL1T3", TYPE: "F64", RW: "R"},
+    "0x0432": {NAME: "importActiveEnergyL2T3", TYPE: "F64", RW: "R"},
+    "0x0433": {NAME: "importActiveEnergyL3T3", TYPE: "F64", RW: "R"},
+    "0x0440": {NAME: "importActiveEnergySystemT4", TYPE: "F64", RW: "R"},
+    "0x0441": {NAME: "importActiveEnergyL1T4", TYPE: "F64", RW: "R"},
+    "0x0442": {NAME: "importActiveEnergyL2T4", TYPE: "F64", RW: "R"},
+    "0x0443": {NAME: "importActiveEnergyL3T4", TYPE: "F64", RW: "R"},
+    "0x04A0": {NAME: "importActiveEnergySystemPartial", TYPE: "F64", RW: "R"},
+    "0x04A1": {NAME: "importActiveEnergyL1Partial", TYPE: "F64", RW: "R"},
+    "0x04A2": {NAME: "importActiveEnergyL2Partial", TYPE: "F64", RW: "R"},
+    "0x04A3": {NAME: "importActiveEnergyL3Partial", TYPE: "F64", RW: "R"},
+    "0x0500": {NAME: "exportActiveEnergySystem", TYPE: "F64", RW: "R"},
+    "0x0501": {NAME: "exportActiveEnergyL1", TYPE: "F64", RW: "R"},
+    "0x0502": {NAME: "exportActiveEnergyL2", TYPE: "F64", RW: "R"},
+    "0x0503": {NAME: "exportActiveEnergyL3", TYPE: "F64", RW: "R"},
+    "0x0510": {NAME: "exportActiveEnergySystemT1", TYPE: "F64", RW: "R"},
+    "0x0511": {NAME: "exportActiveEnergyL1T1", TYPE: "F64", RW: "R"},
+    "0x0512": {NAME: "exportActiveEnergyL2T1", TYPE: "F64", RW: "R"},
+    "0x0513": {NAME: "exportActiveEnergyL3T1", TYPE: "F64", RW: "R"},
+    "0x0520": {NAME: "exportActiveEnergySystemT2", TYPE: "F64", RW: "R"},
+    "0x0521": {NAME: "exportActiveEnergyL1T2", TYPE: "F64", RW: "R"},
+    "0x0522": {NAME: "exportActiveEnergyL2T2", TYPE: "F64", RW: "R"},
+    "0x0523": {NAME: "exportActiveEnergyL3T2", TYPE: "F64", RW: "R"},
+    "0x0530": {NAME: "exportActiveEnergySystemT3", TYPE: "F64", RW: "R"},
+    "0x0531": {NAME: "exportActiveEnergyL1T3", TYPE: "F64", RW: "R"},
+    "0x0532": {NAME: "exportActiveEnergyL2T3", TYPE: "F64", RW: "R"},
+    "0x0533": {NAME: "exportActiveEnergyL3T3", TYPE: "F64", RW: "R"},
+    "0x0540": {NAME: "exportActiveEnergySystemT4", TYPE: "F64", RW: "R"},
+    "0x0541": {NAME: "exportActiveEnergyL1T4", TYPE: "F64", RW: "R"},
+    "0x0542": {NAME: "exportActiveEnergyL2T4", TYPE: "F64", RW: "R"},
+    "0x0543": {NAME: "exportActiveEnergyL3T4", TYPE: "F64", RW: "R"},
+    "0x05A0": {NAME: "exportActiveEnergySystemPartial", TYPE: "F64", RW: "R"},
+    "0x05A1": {NAME: "exportActiveEnergyL1Partial", TYPE: "F64", RW: "R"},
+    "0x05A2": {NAME: "exportActiveEnergyL2Partial", TYPE: "F64", RW: "R"},
+    "0x05A3": {NAME: "exportActiveEnergyL3Partial", TYPE: "F64", RW: "R"},
+    "0x0600": {NAME: "importReactiveEnergySystem", TYPE: "F64", RW: "R"},
+    "0x0601": {NAME: "importReactiveEnergyL1", TYPE: "F64", RW: "R"},
+    "0x0602": {NAME: "importReactiveEnergyL2", TYPE: "F64", RW: "R"},
+    "0x0603": {NAME: "importReactiveEnergyL3", TYPE: "F64", RW: "R"},
+    "0x0610": {NAME: "importReactiveEnergySystemT1", TYPE: "F64", RW: "R"},
+    "0x0611": {NAME: "importReactiveEnergyL1T1", TYPE: "F64", RW: "R"},
+    "0x0612": {NAME: "importReactiveEnergyL2T1", TYPE: "F64", RW: "R"},
+    "0x0613": {NAME: "importReactiveEnergyL3T1", TYPE: "F64", RW: "R"},
+    "0x0620": {NAME: "importReactiveEnergySystemT2", TYPE: "F64", RW: "R"},
+    "0x0621": {NAME: "importReactiveEnergyL1T2", TYPE: "F64", RW: "R"},
+    "0x0622": {NAME: "importReactiveEnergyL2T2", TYPE: "F64", RW: "R"},
+    "0x0623": {NAME: "importReactiveEnergyL3T2", TYPE: "F64", RW: "R"},
+    "0x0630": {NAME: "importReactiveEnergySystemT3", TYPE: "F64", RW: "R"},
+    "0x0631": {NAME: "importReactiveEnergyL1T3", TYPE: "F64", RW: "R"},
+    "0x0632": {NAME: "importReactiveEnergyL2T3", TYPE: "F64", RW: "R"},
+    "0x0633": {NAME: "importReactiveEnergyL3T3", TYPE: "F64", RW: "R"},
+    "0x0640": {NAME: "importReactiveEnergySystemT4", TYPE: "F64", RW: "R"},
+    "0x0641": {NAME: "importReactiveEnergyL1T4", TYPE: "F64", RW: "R"},
+    "0x0642": {NAME: "importReactiveEnergyL2T4", TYPE: "F64", RW: "R"},
+    "0x0643": {NAME: "importReactiveEnergyL3T4", TYPE: "F64", RW: "R"},
+    "0x06A0": {NAME: "importReactiveEnergySystemPartial", TYPE: "F64", RW: "R"},
+    "0x06A1": {NAME: "importReactiveEnergyL1Partial", TYPE: "F64", RW: "R"},
+    "0x06A2": {NAME: "importReactiveEnergyL2Partial", TYPE: "F64", RW: "R"},
+    "0x06A3": {NAME: "importReactiveEnergyL3Partial", TYPE: "F64", RW: "R"},
+    "0x0700": {NAME: "exportReactiveEnergySystem", TYPE: "F64", RW: "R"},
+    "0x0701": {NAME: "exportReactiveEnergyL1", TYPE: "F64", RW: "R"},
+    "0x0702": {NAME: "exportReactiveEnergyL2", TYPE: "F64", RW: "R"},
+    "0x0703": {NAME: "exportReactiveEnergyL3", TYPE: "F64", RW: "R"},
+    "0x0710": {NAME: "exportReactiveEnergySystemT1", TYPE: "F64", RW: "R"},
+    "0x0711": {NAME: "exportReactiveEnergyL1T1", TYPE: "F64", RW: "R"},
+    "0x0712": {NAME: "exportReactiveEnergyL2T1", TYPE: "F64", RW: "R"},
+    "0x0713": {NAME: "exportReactiveEnergyL3T1", TYPE: "F64", RW: "R"},
+    "0x0720": {NAME: "exportReactiveEnergySystemT2", TYPE: "F64", RW: "R"},
+    "0x0721": {NAME: "exportReactiveEnergyL1T2", TYPE: "F64", RW: "R"},
+    "0x0722": {NAME: "exportReactiveEnergyL2T2", TYPE: "F64", RW: "R"},
+    "0x0723": {NAME: "exportReactiveEnergyL3T2", TYPE: "F64", RW: "R"},
+    "0x07A0": {NAME: "exportReactiveEnergySystemPartial", TYPE: "F64", RW: "R"},
+    "0x07A1": {NAME: "exportReactiveEnergyL1Partial", TYPE: "F64", RW: "R"},
+    "0x07A2": {NAME: "exportReactiveEnergyL2Partial", TYPE: "F64", RW: "R"},
+    "0x07A3": {NAME: "exportReactiveEnergyL3Partial", TYPE: "F64", RW: "R"},
+    "0x0800": {NAME: "activeEnergyBalanceSystem", TYPE: "F64", RW: "R"},
+    "0x0801": {NAME: "activeEnergyBalanceL1", TYPE: "F64", RW: "R"},
+    "0x0802": {NAME: "activeEnergyBalanceL2", TYPE: "F64", RW: "R"},
+    "0x0803": {NAME: "activeEnergyBalanceL3", TYPE: "F64", RW: "R"},
+    "0x08F0": {NAME: "reactiveEnergyBalanceSystem", TYPE: "F64", RW: "R"},
+    "0x08F1": {NAME: "reactiveEnergyBalanceL1", TYPE: "F64", RW: "R"},
+    "0x08F2": {NAME: "reactiveEnergyBalanceL2", TYPE: "F64", RW: "R"},
+    "0x08F3": {NAME: "reactiveEnergyBalanceL3", TYPE: "F64", RW: "R"},
+
+    /* Reactive energy per zone, float64 (kVArh) */
+    "0xA100": {NAME: "reactiveEnergyZone1System", TYPE: "F64", RW: "R"},
+    "0xA101": {NAME: "reactiveEnergyZone1L1", TYPE: "F64", RW: "R"},
+    "0xA102": {NAME: "reactiveEnergyZone1L2", TYPE: "F64", RW: "R"},
+    "0xA103": {NAME: "reactiveEnergyZone1L3", TYPE: "F64", RW: "R"},
+    "0xA110": {NAME: "reactiveEnergyZone1SystemT1", TYPE: "F64", RW: "R"},
+    "0xA111": {NAME: "reactiveEnergyZone1L1T1", TYPE: "F64", RW: "R"},
+    "0xA112": {NAME: "reactiveEnergyZone1L2T1", TYPE: "F64", RW: "R"},
+    "0xA113": {NAME: "reactiveEnergyZone1L3T1", TYPE: "F64", RW: "R"},
+    "0xA120": {NAME: "reactiveEnergyZone1SystemT2", TYPE: "F64", RW: "R"},
+    "0xA121": {NAME: "reactiveEnergyZone1L1T2", TYPE: "F64", RW: "R"},
+    "0xA122": {NAME: "reactiveEnergyZone1L2T2", TYPE: "F64", RW: "R"},
+    "0xA123": {NAME: "reactiveEnergyZone1L3T2", TYPE: "F64", RW: "R"},
+    "0xA200": {NAME: "reactiveEnergyZone2System", TYPE: "F64", RW: "R"},
+    "0xA201": {NAME: "reactiveEnergyZone2L1", TYPE: "F64", RW: "R"},
+    "0xA202": {NAME: "reactiveEnergyZone2L2", TYPE: "F64", RW: "R"},
+    "0xA203": {NAME: "reactiveEnergyZone2L3", TYPE: "F64", RW: "R"},
+    "0xA210": {NAME: "reactiveEnergyZone2SystemT1", TYPE: "F64", RW: "R"},
+    "0xA211": {NAME: "reactiveEnergyZone2L1T1", TYPE: "F64", RW: "R"},
+    "0xA212": {NAME: "reactiveEnergyZone2L2T1", TYPE: "F64", RW: "R"},
+    "0xA213": {NAME: "reactiveEnergyZone2L3T1", TYPE: "F64", RW: "R"},
+    "0xA220": {NAME: "reactiveEnergyZone2SystemT2", TYPE: "F64", RW: "R"},
+    "0xA221": {NAME: "reactiveEnergyZone2L1T2", TYPE: "F64", RW: "R"},
+    "0xA222": {NAME: "reactiveEnergyZone2L2T2", TYPE: "F64", RW: "R"},
+    "0xA223": {NAME: "reactiveEnergyZone2L3T2", TYPE: "F64", RW: "R"},
+    "0xA300": {NAME: "reactiveEnergyZone3System", TYPE: "F64", RW: "R"},
+    "0xA301": {NAME: "reactiveEnergyZone3L1", TYPE: "F64", RW: "R"},
+    "0xA302": {NAME: "reactiveEnergyZone3L2", TYPE: "F64", RW: "R"},
+    "0xA303": {NAME: "reactiveEnergyZone3L3", TYPE: "F64", RW: "R"},
+    "0xA310": {NAME: "reactiveEnergyZone3SystemT1", TYPE: "F64", RW: "R"},
+    "0xA311": {NAME: "reactiveEnergyZone3L1T1", TYPE: "F64", RW: "R"},
+    "0xA312": {NAME: "reactiveEnergyZone3L2T1", TYPE: "F64", RW: "R"},
+    "0xA313": {NAME: "reactiveEnergyZone3L3T1", TYPE: "F64", RW: "R"},
+    "0xA320": {NAME: "reactiveEnergyZone3SystemT2", TYPE: "F64", RW: "R"},
+    "0xA321": {NAME: "reactiveEnergyZone3L1T2", TYPE: "F64", RW: "R"},
+    "0xA322": {NAME: "reactiveEnergyZone3L2T2", TYPE: "F64", RW: "R"},
+    "0xA323": {NAME: "reactiveEnergyZone3L3T2", TYPE: "F64", RW: "R"},
+    "0xA400": {NAME: "reactiveEnergyZone4System", TYPE: "F64", RW: "R"},
+    "0xA401": {NAME: "reactiveEnergyZone4L1", TYPE: "F64", RW: "R"},
+    "0xA402": {NAME: "reactiveEnergyZone4L2", TYPE: "F64", RW: "R"},
+    "0xA403": {NAME: "reactiveEnergyZone4L3", TYPE: "F64", RW: "R"},
+    "0xA410": {NAME: "reactiveEnergyZone4SystemT1", TYPE: "F64", RW: "R"},
+    "0xA411": {NAME: "reactiveEnergyZone4L1T1", TYPE: "F64", RW: "R"},
+    "0xA412": {NAME: "reactiveEnergyZone4L2T1", TYPE: "F64", RW: "R"},
+    "0xA413": {NAME: "reactiveEnergyZone4L3T1", TYPE: "F64", RW: "R"},
+    "0xA420": {NAME: "reactiveEnergyZone4SystemT2", TYPE: "F64", RW: "R"},
+    "0xA421": {NAME: "reactiveEnergyZone4L1T2", TYPE: "F64", RW: "R"},
+    "0xA422": {NAME: "reactiveEnergyZone4L2T2", TYPE: "F64", RW: "R"},
+    "0xA423": {NAME: "reactiveEnergyZone4L3T2", TYPE: "F64", RW: "R"},
+
+    /* Digital inputs: status and counters */
+    "0x2100": {NAME: "digitalInputFlags", TYPE: "FLAGS", RW: "R", SIZE: 4, FLAGS: [
+        {NAME: "digitalInput1Flag", BIT: 0, VALUES: ["NO_ERROR", "ERROR"]},
+        {NAME: "digitalInput2Flag", BIT: 1, VALUES: ["NO_ERROR", "ERROR"]}
+    ]},
+    "0x2110": {NAME: "digitalInput1Counter", TYPE: "U32", RW: "R"},
+    "0x2111": {NAME: "digitalInput1OnTime", TYPE: "U32", RW: "R"},
+    "0x2120": {NAME: "digitalInput2Counter", TYPE: "U32", RW: "R"},
+    "0x2121": {NAME: "digitalInput2OnTime", TYPE: "U32", RW: "R"},
+
+    /* Diagnostics */
+    "0xEEA0": {NAME: "diagnosticAlarms", TYPE: "FLAGS", RW: "R", SIZE: 4, FLAGS: [
+        {NAME: "alarmLowVoltageLN", BIT: 0, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmLowCurrent", BIT: 1, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmLowActivePower", BIT: 2, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmLowReactivePower", BIT: 3, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmLowApparentPower", BIT: 4, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmLowPowerFactor", BIT: 5, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmLowFrequency", BIT: 6, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighVoltageLN", BIT: 16, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighCurrent", BIT: 17, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighActivePower", BIT: 18, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighReactivePower", BIT: 19, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighApparentPower", BIT: 20, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighPowerFactor", BIT: 21, VALUES: ["NO_ALARM", "ALARM"]},
+        {NAME: "alarmHighFrequency", BIT: 22, VALUES: ["NO_ALARM", "ALARM"]}
+    ]},
+    // DEM4 bit layout; DEM1 and DEM2 meters report bit 0 = pulse error, bit 1 = current direction error.
+    "0xEEE0": {NAME: "diagnosticErrorFlags", TYPE: "FLAGS", RW: "R", SIZE: 4, FLAGS: [
+        {NAME: "pulse1ErrorFlag", BIT: 0, VALUES: ["NO_ERROR", "ERROR"]},
+        {NAME: "pulse2ErrorFlag", BIT: 1, VALUES: ["NO_ERROR", "ERROR"]},
+        {NAME: "phaseSequenceErrorFlag", BIT: 2, VALUES: ["NO_ERROR", "ERROR"]},
+        {NAME: "currentDirectionErrorFlag", BIT: 3, VALUES: ["NO_ERROR", "ERROR"]}
+    ]},
+
+    /* Electrical installation labels */
+    "0xEE3C": {NAME: "electricalCabinet", TYPE: "STR", RW: "RW"},
+    "0xEE3D": {NAME: "electricalGroup", TYPE: "STR", RW: "RW"},
+
+    /* Meter information */
+    // Firmware version reported by the meter after each start, v0.0 until the meter has answered.
+    // firmwareVersion (0xFF69) is the firmware version of the communication module.
+    "0xEE3E": {NAME: "meterFirmwareVersion", TYPE: "VER", RW: "R"},
+
+    /* Serial link to the meter */
+    "0x6000": {NAME: "serialWatchdogAlarm", TYPE: "ENUM", RW: "R", VALUES: NORMAL_ALARM},
+    "0x6001": {NAME: "serialModbusSlaveId", TYPE: "U8", RW: "RW", MIN: 1, MAX: 247},
+    "0x6002": {NAME: "serialStopBits", TYPE: "U8", RW: "RW", ALLOWED: [1, 2]},    // 1.5 stop bits (3) is not supported
+    "0x6003": {NAME: "serialParity", TYPE: "ENUM", RW: "RW", VALUES: SERIAL_PARITY_VALUES},
+    "0x6004": {NAME: "serialDataWidth", TYPE: "U8", RW: "RW", ALLOWED: [5, 6, 7, 8]},
+    "0x6005": {NAME: "serialBaudRate", TYPE: "U32", RW: "RW", ALLOWED: SERIAL_BAUD_RATES},
+    "0x6009": {NAME: "serialModbusExecutionInterval", TYPE: "U16", RW: "RW", MIN: 50, MAX: 60000},
+    "0x600A": {NAME: "serialModbusResponseTimeout", TYPE: "U16", RW: "RW", MIN: 10, MAX: 60000},
+    "0x600C": {NAME: "serialModbusMaxRetries", TYPE: "U8", RW: "RW", MIN: 1, MAX: 5},
+
+    /* Digital outputs (output 1 is factory fixed: read only) */
+    "0x1000": {NAME: "digitalOutput1Source", TYPE: "ENUM", RW: "R", VALUES: DIGITAL_OUTPUT_SOURCE_VALUES},
+    "0x1002": {NAME: "digitalOutput1Mode", TYPE: "ENUM", RW: "R", VALUES: DIGITAL_OUTPUT_MODE_VALUES},
+    "0x1004": {NAME: "digitalOutput1EnergyWeight", TYPE: "U8", RW: "R", MIN: 1, MAX: 9},
+    "0x1008": {NAME: "digitalOutput1Multiplier", TYPE: "ENUM", RW: "R", VALUES: DIGITAL_OUTPUT_MULTIPLIER_VALUES},
+    "0x100C": {NAME: "digitalOutput1OnTime", TYPE: "U16", RW: "R", MIN: 30, MAX: 2500},
+    "0x1020": {NAME: "digitalOutput2Source", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_OUTPUT_SOURCE_VALUES},
+    "0x1022": {NAME: "digitalOutput2Mode", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_OUTPUT_MODE_VALUES},
+    "0x1024": {NAME: "digitalOutput2EnergyWeight", TYPE: "U8", RW: "RW", MIN: 1, MAX: 9},
+    "0x1028": {NAME: "digitalOutput2Multiplier", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_OUTPUT_MULTIPLIER_VALUES},
+    "0x102C": {NAME: "digitalOutput2OnTime", TYPE: "U16", RW: "RW", MIN: 30, MAX: 2500},
+
+    /* Digital input configuration (DEM4) */
+    "0x2000": {NAME: "digitalInput1Source", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_INPUT_SOURCE_VALUES},
+    "0x2004": {NAME: "digitalInput1Delay", TYPE: "U16", RW: "RW", MIN: 100, MAX: 2000},
+    "0x2008": {NAME: "digitalInput1Edge", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_INPUT_EDGE_VALUES},
+    "0x2010": {NAME: "digitalInput2Source", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_INPUT_SOURCE_VALUES},
+    "0x2014": {NAME: "digitalInput2Delay", TYPE: "U16", RW: "RW", MIN: 100, MAX: 2000},
+    "0x2018": {NAME: "digitalInput2Edge", TYPE: "ENUM", RW: "RW", VALUES: DIGITAL_INPUT_EDGE_VALUES},
+
+    /* Demand calculation */
+    "0x3000": {NAME: "demandMethod", TYPE: "ENUM", RW: "RW", VALUES: DEMAND_METHOD_VALUES},
+    "0x3004": {NAME: "demandPeriod", TYPE: "U8", RW: "RW", MIN: 1, MAX: 60},
+    "0x3008": {NAME: "demandRollingSubPeriod", TYPE: "U8", RW: "RW", MIN: 1, MAX: 60},
+
+    /* Meter commands: write 1 to execute; reading returns 1 while the command is pending */
+    "0x4000": {NAME: "meterSaveConfiguration", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x4002": {NAME: "meterFactoryReset", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x4004": {NAME: "meterRestart", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x4006": {NAME: "meterClearDemandData", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x4008": {NAME: "meterClearDigitalInputCounter", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x400E": {NAME: "meterActivateTariff1", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x4010": {NAME: "meterActivateTariff2", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+    "0x4012": {NAME: "meterClearRunHours", TYPE: "U8", RW: "RW", MIN: 1, MAX: 1},
+
+    /* Voltage and current transformers (DEM4) */
+    "0x5000": {NAME: "voltageTransformerPrimary", TYPE: "U32", RW: "R"},
+    "0x5001": {NAME: "voltageTransformerSecondary", TYPE: "U16", RW: "R"},
+    "0x5002": {NAME: "currentTransformerPrimary", TYPE: "U16", RW: "RW", MIN: 1, MAX: 9999},
+    "0x5003": {NAME: "currentTransformerSecondary", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1},
+
+    /* Relay outputs: global settings (IQ meter RCM) */
+    "0xB0EC": {NAME: "overheatThreshold", TYPE: "U8", RW: "RW", MIN: 0, MAX: 75},
+    "0xB0ED": {NAME: "protectionDelay", TYPE: "U16", RW: "RW", MIN: 1, MAX: 600},
+    // LoRaWAN relay watchdog: relays to their initial state as soon as the network is lost, until the next join
+    "0xB0EE": {NAME: "watchdog", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+
+    /* Relay output channel 1 */
+    "0xB100": {NAME: "channel1ControlMode", TYPE: "ENUM", RW: "RW", MIN: 0, MAX: 0, VALUES: CONTROL_MODE_VALUES},
+    "0xB101": {NAME: "channel1InitialState", TYPE: "ENUM", RW: "RW", VALUES: OFF_ON},
+    "0xB102": {NAME: "channel1WeekTimer", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB103": {NAME: "channel1WeekTimerScheduleValidity", TYPE: "ENUM", RW: "R", VALUES: INVALID_VALID},
+    "0xB104": {NAME: "channel1DesiredState", TYPE: "ENUM", RW: "RW", MIN: 0, MAX: 2, VALUES: DESIRED_STATE_VALUES},
+    "0xB105": {NAME: "channel1BleControl", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB106": {NAME: "channel1VoltageProtection", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB107": {NAME: "channel1VoltageHighLimit", TYPE: "U16", RW: "RW", MIN: 0, MAX: 300},
+    "0xB108": {NAME: "channel1VoltageLowLimit", TYPE: "U16", RW: "RW", MIN: 0, MAX: 300},
+    "0xB109": {NAME: "channel1CurrentProtection", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB10A": {NAME: "channel1CurrentLimit", TYPE: "U16", RW: "RW", MIN: 0, MAX: 20},
+    "0xB10B": {NAME: "channel1ConsumptionCumulative", TYPE: "U32", RW: "R"},
+    "0xB10C": {NAME: "channel1ConsumptionCurrentUser", TYPE: "U32", RW: "RW", MIN: 0, MAX: 0},
+    "0xB10D": {NAME: "channel1Prepaid", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB10E": {NAME: "channel1AllowedConsumption", TYPE: "U32", RW: "RW"},
+    "0xB10F": {NAME: "channel1Postpaid", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB110": {NAME: "channel1MomentaryDuration", TYPE: "U8", RW: "RW", MIN: 1, MAX: 120},
+    "0xB111": {NAME: "channel1MomentaryRequestId", TYPE: "U8", RW: "RW"},
+    "0xB112": {NAME: "channel1OnOffCycles", TYPE: "U32", RW: "R"},
+    "0xB113": {NAME: "channel1RelayStateInfo", TYPE: "STRUCT", RW: "R", SIZE: 4, DECODE: decodeRelayStateInfo},
+    "0xB114": {NAME: "channel1RelayChangeOfState", TYPE: "STRUCT", RW: "", SIZE: 8, DECODE: decodeRelayChangeOfState},
+
+    /* Relay output channel 2 */
+    "0xB200": {NAME: "channel2ControlMode", TYPE: "ENUM", RW: "RW", MIN: 0, MAX: 0, VALUES: CONTROL_MODE_VALUES},
+    "0xB201": {NAME: "channel2InitialState", TYPE: "ENUM", RW: "RW", VALUES: OFF_ON},
+    "0xB202": {NAME: "channel2WeekTimer", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB203": {NAME: "channel2WeekTimerScheduleValidity", TYPE: "ENUM", RW: "R", VALUES: INVALID_VALID},
+    "0xB204": {NAME: "channel2DesiredState", TYPE: "ENUM", RW: "RW", MIN: 0, MAX: 2, VALUES: DESIRED_STATE_VALUES},
+    "0xB205": {NAME: "channel2BleControl", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB206": {NAME: "channel2VoltageProtection", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB207": {NAME: "channel2VoltageHighLimit", TYPE: "U16", RW: "RW", MIN: 0, MAX: 300},
+    "0xB208": {NAME: "channel2VoltageLowLimit", TYPE: "U16", RW: "RW", MIN: 0, MAX: 300},
+    "0xB209": {NAME: "channel2CurrentProtection", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB20A": {NAME: "channel2CurrentLimit", TYPE: "U16", RW: "RW", MIN: 0, MAX: 20},
+    "0xB20B": {NAME: "channel2ConsumptionCumulative", TYPE: "U32", RW: "R"},
+    "0xB20C": {NAME: "channel2ConsumptionCurrentUser", TYPE: "U32", RW: "RW", MIN: 0, MAX: 0},
+    "0xB20D": {NAME: "channel2Prepaid", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB20E": {NAME: "channel2AllowedConsumption", TYPE: "U32", RW: "RW"},
+    "0xB20F": {NAME: "channel2Postpaid", TYPE: "ENUM", RW: "RW", VALUES: DISABLED_ENABLED},
+    "0xB210": {NAME: "channel2MomentaryDuration", TYPE: "U8", RW: "RW", MIN: 1, MAX: 120},
+    "0xB211": {NAME: "channel2MomentaryRequestId", TYPE: "U8", RW: "RW"},
+    "0xB212": {NAME: "channel2OnOffCycles", TYPE: "U32", RW: "R"},
+    "0xB213": {NAME: "channel2RelayStateInfo", TYPE: "STRUCT", RW: "R", SIZE: 4, DECODE: decodeRelayStateInfo},
+    "0xB214": {NAME: "channel2RelayChangeOfState", TYPE: "STRUCT", RW: "", SIZE: 8, DECODE: decodeRelayChangeOfState},
+
+    /* Relay output channel 1 week timer (minute of the day, Monday first) */
+    "0xC100": {NAME: "channel1MondayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC101": {NAME: "channel1MondayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC102": {NAME: "channel1MondayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC103": {NAME: "channel1MondayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC104": {NAME: "channel1MondayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC105": {NAME: "channel1MondayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC106": {NAME: "channel1MondayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC107": {NAME: "channel1MondayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC108": {NAME: "channel1TuesdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC109": {NAME: "channel1TuesdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC10A": {NAME: "channel1TuesdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC10B": {NAME: "channel1TuesdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC10C": {NAME: "channel1TuesdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC10D": {NAME: "channel1TuesdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC10E": {NAME: "channel1TuesdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC10F": {NAME: "channel1TuesdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC110": {NAME: "channel1WednesdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC111": {NAME: "channel1WednesdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC112": {NAME: "channel1WednesdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC113": {NAME: "channel1WednesdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC114": {NAME: "channel1WednesdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC115": {NAME: "channel1WednesdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC116": {NAME: "channel1WednesdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC117": {NAME: "channel1WednesdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC118": {NAME: "channel1ThursdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC119": {NAME: "channel1ThursdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC11A": {NAME: "channel1ThursdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC11B": {NAME: "channel1ThursdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC11C": {NAME: "channel1ThursdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC11D": {NAME: "channel1ThursdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC11E": {NAME: "channel1ThursdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC11F": {NAME: "channel1ThursdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC120": {NAME: "channel1FridayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC121": {NAME: "channel1FridayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC122": {NAME: "channel1FridayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC123": {NAME: "channel1FridayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC124": {NAME: "channel1FridayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC125": {NAME: "channel1FridayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC126": {NAME: "channel1FridayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC127": {NAME: "channel1FridayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC128": {NAME: "channel1SaturdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC129": {NAME: "channel1SaturdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC12A": {NAME: "channel1SaturdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC12B": {NAME: "channel1SaturdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC12C": {NAME: "channel1SaturdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC12D": {NAME: "channel1SaturdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC12E": {NAME: "channel1SaturdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC12F": {NAME: "channel1SaturdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC130": {NAME: "channel1SundayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC131": {NAME: "channel1SundayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC132": {NAME: "channel1SundayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC133": {NAME: "channel1SundayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC134": {NAME: "channel1SundayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC135": {NAME: "channel1SundayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC136": {NAME: "channel1SundayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC137": {NAME: "channel1SundayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+
+    /* Relay output channel 2 week timer (minute of the day, Monday first) */
+    "0xC200": {NAME: "channel2MondayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC201": {NAME: "channel2MondayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC202": {NAME: "channel2MondayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC203": {NAME: "channel2MondayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC204": {NAME: "channel2MondayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC205": {NAME: "channel2MondayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC206": {NAME: "channel2MondayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC207": {NAME: "channel2MondayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC208": {NAME: "channel2TuesdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC209": {NAME: "channel2TuesdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC20A": {NAME: "channel2TuesdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC20B": {NAME: "channel2TuesdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC20C": {NAME: "channel2TuesdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC20D": {NAME: "channel2TuesdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC20E": {NAME: "channel2TuesdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC20F": {NAME: "channel2TuesdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC210": {NAME: "channel2WednesdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC211": {NAME: "channel2WednesdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC212": {NAME: "channel2WednesdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC213": {NAME: "channel2WednesdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC214": {NAME: "channel2WednesdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC215": {NAME: "channel2WednesdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC216": {NAME: "channel2WednesdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC217": {NAME: "channel2WednesdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC218": {NAME: "channel2ThursdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC219": {NAME: "channel2ThursdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC21A": {NAME: "channel2ThursdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC21B": {NAME: "channel2ThursdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC21C": {NAME: "channel2ThursdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC21D": {NAME: "channel2ThursdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC21E": {NAME: "channel2ThursdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC21F": {NAME: "channel2ThursdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC220": {NAME: "channel2FridayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC221": {NAME: "channel2FridayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC222": {NAME: "channel2FridayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC223": {NAME: "channel2FridayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC224": {NAME: "channel2FridayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC225": {NAME: "channel2FridayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC226": {NAME: "channel2FridayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC227": {NAME: "channel2FridayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC228": {NAME: "channel2SaturdayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC229": {NAME: "channel2SaturdayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC22A": {NAME: "channel2SaturdayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC22B": {NAME: "channel2SaturdayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC22C": {NAME: "channel2SaturdayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC22D": {NAME: "channel2SaturdayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC22E": {NAME: "channel2SaturdayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC22F": {NAME: "channel2SaturdayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC230": {NAME: "channel2SundayWindow1StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC231": {NAME: "channel2SundayWindow1EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC232": {NAME: "channel2SundayWindow2StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC233": {NAME: "channel2SundayWindow2EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC234": {NAME: "channel2SundayWindow3StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC235": {NAME: "channel2SundayWindow3EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC236": {NAME: "channel2SundayWindow4StartMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440},
+    "0xC237": {NAME: "channel2SundayWindow4EndMinute", TYPE: "U16", RW: "RW", MIN: 0, MAX: 1440}
+};
+
+var TYPE_SIZES = {U8: 1, U16: 2, U24: 3, U32: 4, I8: 1, I16: 2, I32: 4, F32: 4, F64: 8, VER: 2, VER3: 3, ENUM: 1};
+
+// Register name -> "0xABCD" key, for the encoder only. registerKeys() builds it on first use:
+// ChirpStack v3 parses and runs the whole codec for every uplink within a 100 ms limit, so
+// uplinks skip this work. It only caches the constant REGISTERS table.
+var REGISTER_KEYS = null;
+
+// Periodic uplink configuration fields (downlink on fPorts 1-10).
+var PERIODIC = {
+    CHANNEL: 0xFF,
+    INTERVAL: 0x14,
+    MODE: 0x15,
+    STATUS: 0x16,
+    REGISTERS: 0x17
+};
+
+var READING = {
+    CHANNEL: 0xFF,
+    TYPE: 0xCC
+};
+
+// Max demand configuration fields (downlink on fPort 11).
+var MAX_DEMAND_CONFIG = {
+    CHANNEL: 0xFF,
+    REGISTER: 0x40,
+    MODE: 0x41,
+    STATUS: 0x42,
+    DATALOGGER_INTERVAL: 0x43,
+    UPLINK_INTERVAL: 0x44
+};
+
+// fPort used by encodeDownlink() when the command has none.
+var COMMAND_FPORTS = {
+    Config: FPORT.GENERIC,
+    Reading: FPORT.READING,
+    MaxDemand: FPORT.MAX_DEMAND_CONFIG
+};
+
+/************************************************************************************************************/
+/* Uplink decoding                                                                                          */
+/************************************************************************************************************/
+
+function decodePayload(fPort, bytes) {
+    var result = {data: {}, errors: [], warnings: []};
+    if (fPort === FPORT.MAC) {
+        result.data.mac = MESSAGES.MAC;
+        result.data.fPort = fPort;
+    } else if (fPort >= FPORT.FUOTA_MIN && fPort <= FPORT.FUOTA_MAX) {
+        result.data.info = MESSAGES.FUOTA;
+    } else if (fPort === FPORT.FMP) {
+        decodeFmpAnswers(bytes, result);
+        result.data.info = MESSAGES.FMP;
+    } else if (bytes.length === 1 && (bytes[0] === 0 || bytes[0] === 1)) {
+        // One byte status reply to a downlink, on the fPort of the command.
+        if (bytes[0] === 0) {
+            result.data.info = MESSAGES.DOWNLINK_SUCCESS;
+        } else {
+            addWarning(result, MESSAGES.DOWNLINK_FAILURE);
+        }
+    } else if ((fPort >= FPORT.PERIODIC_MIN && fPort <= FPORT.PERIODIC_MAX) || fPort === FPORT.ALARM ||
+            fPort === FPORT.GENERIC || fPort === FPORT.READING) {
+        decodeRecords(bytes, 0, result);
+    } else if (fPort === FPORT.MAX_DEMAND) {
+        decodeMaxDemand(bytes, result);
+    } else {
+        result.data.fPort = fPort;
+        addError(result, MESSAGES.FPORT_INCORRECT);
+    }
+    for (var key in CODEC_INFO) {
+        if (has(CODEC_INFO, key) && !has(result.data, key)) {
+            result.data[key] = CODEC_INFO[key];
+        }
+    }
+    return result;
+}
+
+/* <addr16><value> records until the end of the payload. */
+function decodeRecords(bytes, index, result) {
+    while (index < bytes.length) {
+        var key = registerKey(bytes, index);
+        if (key === null) {
+            addError(result, "Incomplete register address at index " + index);
+            return;
+        }
+        if (!has(REGISTERS, key)) {
+            addError(result, "Unknown register " + key + " at index " + index);
+            return;
+        }
+        var decoded = decodeValue(bytes, index + 2, REGISTERS[key]);
+        if (decoded === null) {
+            addError(result, "Payload too short for register " + key + " at index " + index);
+            return;
+        }
+        result.data[REGISTERS[key].NAME] = decoded.value;
+        index = index + 2 + decoded.size;
+    }
+}
+
+/* FF01 <timestamp u32> then [<addr16><minutes before timestamp u16><value>]... */
+function decodeMaxDemand(bytes, result) {
+    if (registerKey(bytes, 0) !== "0xFF01" || bytes.length < 6) {
+        addError(result, "Max demand payload must start with the FF01 timestamp");
+        return;
+    }
+    var timestamp = readUint(bytes, 2, 4);
+    var measurements = [];
+    var index = 6;
+    while (index < bytes.length) {
+        var key = registerKey(bytes, index);
+        if (key === null || !has(REGISTERS, key) || index + 4 > bytes.length) {
+            addError(result, "Unknown or incomplete register " + key + " at index " + index);
+            return;
+        }
+        var minutesBefore = readUint(bytes, index + 2, 2);
+        var decoded = decodeValue(bytes, index + 4, REGISTERS[key]);
+        if (decoded === null) {
+            addError(result, "Payload too short for register " + key + " at index " + index);
+            return;
+        }
+        measurements.push({name: REGISTERS[key].NAME, data: decoded.value, ts: timestamp - minutesBefore * 60});
+        index = index + 4 + decoded.size;
+    }
+    result.data.packageTimestamp = timestamp;
+    result.data.listOfMeasurements = measurements;
+}
+
+/* LoRa Alliance FUOTA firmware management (FMP) answers, little endian. */
+function decodeFmpAnswers(bytes, result) {
     var index = 0;
     while (index < bytes.length) {
         var cid = bytes[index];
         index = index + 1;
-        if(cid > 5){
-            return decoded;
-        }
-        if(cid == 0){
-            var ans1 = {};
-            ans1.id = bytes[index];
-            index = index + 1;
-            ans1.version = bytes[index];
-            index = index + 1;
-            decoded.fmpPackageVersionAns = ans1;
-        }
-        else if(cid == 1){
-            var ans2 = {};
-            ans2.firmware = decodeFmpVersionAns(bytes, index);
+        if (cid === 0 && index + 2 <= bytes.length) {
+            result.data.fmpPackageVersionAns = {id: bytes[index], version: bytes[index + 1]};
+            index = index + 2;
+        } else if (cid === 1 && index + 8 <= bytes.length) {
+            result.data.fmpDevVersionAns = {
+                firmware: fmpVersion(bytes, index),
+                hardware: fmpVersion(bytes, index + 4)
+            };
+            index = index + 8;
+        } else if (cid === 2 && index + 4 <= bytes.length) {
+            result.data.fmpDevRebootTimeAns = readUintLE(bytes, index, 4);
             index = index + 4;
-            ans2.hardware = decodeFmpVersionAns(bytes, index);
-            index = index + 4;
-            decoded.fmpDevVersionAns = ans2;
-        }
-        else if (cid == 2) {
-            decoded.fmpDevRebootTimeAns = getUnsignedLittleEndian(bytes, index, 4);
-            index = index + 4;
-        }
-        else if (cid == 3) {
-            decoded.fmpDevRebootCountdownAns = getUnsignedLittleEndian(bytes, index, 3);
+        } else if (cid === 3 && index + 3 <= bytes.length) {
+            result.data.fmpDevRebootCountdownAns = readUintLE(bytes, index, 3);
             index = index + 3;
-        }
-        else if (cid == 4) {
-            var ans5 = {};
-            var fwStatus = bytes[index];
-            index = index + 1;
-            if (fwStatus == 0) {
-                ans5.status = "NO_FIRMWARE_UPGRADE_IMAGE";
-            } else if(fwStatus == 1) {
-                ans5.status = "FIRMWARE_UPGRADE_IMAGE_INVALID";
-            } else if(fwStatus == 2) {
-                ans5.status = "FIRMWARE_UPGRADE_IMAGE_MISMATCH";
-            } else if(fwStatus == 3) {
-                ans5 = decodeFmpVersionAns(bytes, index);
-                index = index + 4;
-                ans5.status = "FIRMWARE_UPGRADE_IMAGE_VALID";
-            }
-            decoded.fmpDevUpgradeImageAns = ans5;
-        }
-        else if (cid == 5) {
+        } else if (cid === 4 && index + 1 <= bytes.length) {
             var status = bytes[index];
+            var answer = {};
             index = index + 1;
-            var ans6 = {};
-            if(status != 0){
-                ans6.status = status;
-                ans6.meaning = "DELETE_IMAGE_FAILED";
-            } else {
-                ans6.status = status;
-                ans6.meaning = "DELETE_IMAGE_SUCCESS";
+            if (status === 3 && index + 4 <= bytes.length) {
+                answer = fmpVersion(bytes, index);
+                index = index + 4;
             }
-            decoded.fmpDevDeleteImageAns = ans6;
+            answer.status = enumLabel({0: "NO_FIRMWARE_UPGRADE_IMAGE", 1: "FIRMWARE_UPGRADE_IMAGE_INVALID",
+                2: "FIRMWARE_UPGRADE_IMAGE_MISMATCH", 3: "FIRMWARE_UPGRADE_IMAGE_VALID"}, status);
+            result.data.fmpDevUpgradeImageAns = answer;
+        } else if (cid === 5 && index + 1 <= bytes.length) {
+            result.data.fmpDevDeleteImageAns = {
+                status: bytes[index],
+                meaning: bytes[index] === 0 ? "DELETE_IMAGE_SUCCESS" : "DELETE_IMAGE_FAILED"
+            };
+            index = index + 1;
+        } else {
+            return;
         }
     }
-    return decoded;
 }
 
+/* major << 24 | minor << 16 | revision, little endian on air */
+function fmpVersion(bytes, index) {
+    var answer = {
+        major: bytes[index + 3],
+        minor: bytes[index + 2],
+        revision: readUintLE(bytes, index, 2)
+    };
+    answer.version = "v" + answer.major + "." + answer.minor + "." + answer.revision;
+    return answer;
+}
 
-function decodeMaxDemandHistoricData(bytes)
-{
-    var decoded = {};
-    // package timestamp
-    var index = 2; // skip addr of packageTimestamp
-    var packageTimestamp = getUnsignedBigEndian(bytes, index, 4);
-    var listOfMeasurements = [];
-    index = index + 4;
-    while(index + 2 < bytes.length)
-    {
-        var regAddr = getRegAddr(bytes, index);
-        index = index + 2;
-        var reg = getRegister(regAddr);
-        if(reg == null){
-            index = " at index " + (index - 1);
-            decoded[UPLINK.ERROR_NAME] = UPLINK.ERRORS.REGISTER + regAddr + index;
-            return decoded;
-        }
-        var logItem = {};
-        var delta = getUnsignedBigEndian(bytes, index, 2);
-        delta = delta * 60;
-        index = index + 2;
-        // Decoding
-        reg.INDEX = index;
-        reg = decodeRegister(bytes, reg);
-        logItem.name = reg.NAME;
-        logItem.data = reg.DATA;
-        if(reg.ALIAS){
-            logItem.alias = reg.ALIAS;
-        }
-        logItem.ts = packageTimestamp - delta;
-        index = index + reg.SIZE;
-        listOfMeasurements.push(logItem);
+/* @returns {value, size} or null when the payload is too short */
+function decodeValue(bytes, index, reg) {
+    var size = valueSize(bytes, index, reg);
+    if (size < 0 || index + size > bytes.length) {
+        return null;
     }
-    decoded.packageTimestamp = packageTimestamp;
-    decoded.listOfMeasurements = listOfMeasurements;
-    return decoded;
-}
-
-
-/**  Helper functions  **/
-
-/**
- * 
- * @param {Array} bytes uplink bytes
- * @param {Number} index current index in bytes
- * @returns {String} register address in hex (eg: 0x0002)
- */
-function getRegAddr(bytes, index)
-{
-    return '0x' + byteToEvenHEX(bytes[index]) + byteToEvenHEX(bytes[index+1]);
-}
-
-/**
- * @brief Get a register information for a given register address
- * @param {String} regAddr register address
- * @returns {Object|null} register information or null if not found
- */
-function getRegister(regAddr)
-{
-    if(regAddr in DEVICE_GENERIC_REGISTERS){
-        return DEVICE_GENERIC_REGISTERS[regAddr];
-    }
-    if(regAddr in DEVICE_SPECIFIC_REGISTERS){
-        return DEVICE_SPECIFIC_REGISTERS[regAddr];
-    }
-    return null;
-}
-
-/**
- * @brief Decodes a single register
- * @param {Array[number]} bytes uplink bytes
- * @param {Object} reg register information
- * @returns {Object} decoded register
- */
-function decodeRegister(bytes, reg)
-{
-    var data;
+    var value;
     switch (reg.TYPE) {
-    case 'VER':{
-        reg.SIZE = 2;
-        // Decode into "v" + DIGIT STRING + "." DIGIT STRING format
-        data = getHexString(bytes, reg.INDEX, reg.SIZE);
-        data = "v" + data[0] + "." + data[1];
-        reg.DATA = data;
-        return reg;
-    }
-    case 'ENUM':{
-        reg.SIZE = 1;
-        // Decode into HEX byte (VALUES specified in reg.VALUES)
-        data = "0x" + byteToEvenHEX(bytes[reg.INDEX]);
-        data = reg.VALUES[data];
-        reg.DATA = data;
-        return reg;
-    }
-    case 'STR':{
-        // first byte is the data size
-        reg.SIZE = bytes[reg.INDEX];
-        reg.INDEX = reg.INDEX + 1;
-        // Decode into STRING format
-        data = getString(bytes, reg.INDEX, reg.SIZE);
-        // account for data size byte
-        reg.SIZE = reg.SIZE + 1;
-        reg.DATA = data;
-        return reg;
-    }
-    case 'U8':
-    case 'U16':
-    case 'U32':
-    case 'U64':{
-        if(reg.TYPE === 'U8'){
-            reg.SIZE = 1;
-        } else if(reg.TYPE === 'U16'){
-            reg.SIZE = 2;
-        } else if(reg.TYPE === 'U32'){
-            reg.SIZE = 4;
-        } else if(reg.TYPE === 'U64'){
-            reg.SIZE = 8;
-        }
-        data = getUnsignedBigEndian(bytes, reg.INDEX, reg.SIZE);
-        if(reg.RESOLUTION){
-            data = data * reg.RESOLUTION;
-            data = parseFloat(data.toFixed(3));
-        }
-        reg.DATA = data;
-        return reg;
-    }
-    case 'I8':
-    case 'I16':
-    case 'I32':
-    case 'I64':{
-        if(reg.TYPE === 'I8'){
-            reg.SIZE = 1;
-        } else if(reg.TYPE === 'I16'){
-            reg.SIZE = 2;
-        } else if(reg.TYPE === 'I32'){
-            reg.SIZE = 4;
-        } else if(reg.TYPE === 'I64'){
-            reg.SIZE = 8;
-        }
-        data = getUnsignedBigEndian(bytes, reg.INDEX, reg.SIZE);
-        data = getSigned(data, reg.SIZE);
-        if(reg.RESOLUTION){
-            data = data * reg.RESOLUTION;
-            data = parseFloat(data.toFixed(3));
-        }
-        reg.DATA = data;
-        return reg;
-    }
-    case 'F32':{
-        reg.SIZE = 4;
-        data = getFloat32(bytes, reg.INDEX);
-        if(data != null){
-            if(reg.RESOLUTION){
-                data = data * reg.RESOLUTION;
-            }
-            data = parseFloat(data.toFixed(3));
-        }
-        reg.DATA = data;
-        return reg;
-    }
-    case 'F64':{
-        reg.SIZE = 8;
-        data = getFloat64(bytes, reg.INDEX);
-        if(data != null){
-            if(reg.RESOLUTION){
-                data = data * reg.RESOLUTION;
-            }
-            data = parseFloat(data.toFixed(6));
-        }
-        reg.DATA = data;
-        return reg;
-    }
-    case 'FLAG8':
-    case 'FLAG16':
-    case 'FLAG32':{
-        if(reg.TYPE === 'FLAG8'){
-            reg.SIZE = 1;
-        } else if(reg.TYPE === 'FLAG16'){
-            reg.SIZE = 2;
-        } else if(reg.TYPE === 'FLAG32'){
-            reg.SIZE = 4;
-        }
-        data = getUnsignedBigEndian(bytes, reg.INDEX, reg.SIZE);
-        reg.DATA = getFlags(data, reg.FLAGS);
-        return reg;
-    }
-    default:
+    case "U8":
+    case "U16":
+    case "U24":
+    case "U32":
+        value = scale(readUint(bytes, index, size), reg);
         break;
+    case "I8":
+    case "I16":
+    case "I32":
+        value = scale(readInt(bytes, index, size), reg);
+        break;
+    case "F32":
+        value = scaleFloat(readFloat32(bytes, index), reg, 3);
+        break;
+    case "F64":
+        value = scaleFloat(readFloat64(bytes, index), reg, 6);
+        break;
+    case "STR":
+        value = readString(bytes, index + 1, bytes[index]);
+        break;
+    case "VER":
+        value = "v" + bytes[index] + "." + bytes[index + 1];
+        break;
+    case "VER3":
+        value = "v" + bytes[index] + "." + bytes[index + 1] + "." + bytes[index + 2];
+        break;
+    case "ENUM":
+        value = enumLabel(reg.VALUES, bytes[index]);
+        break;
+    case "FLAGS":
+        value = decodeFlags(readUint(bytes, index, size), reg.FLAGS);
+        break;
+    case "STRUCT":
+        value = reg.DECODE(bytes, index);
+        break;
+    default:
+        return null;
     }
-    reg.SIZE = 0;
-    reg.DATA = null;
-    return reg;
+    return {value: value, size: size};
 }
 
-function decodeFmpVersionAns(bytes, index)
-{
-    var ans = {};
-    // little endian
-    ans.major = bytes[index+3];
-    ans.minor = bytes[index+2];
-    ans.revision = (bytes[index+1] << 8) + bytes[index];
-    ans.version = "v" + ans.major + "." + ans.minor + "." + ans.revision;
-    return ans;
+function valueSize(bytes, index, reg) {
+    if (reg.TYPE === "STR") {
+        return index < bytes.length ? 1 + bytes[index] : -1;
+    }
+    if (reg.TYPE === "FLAGS" || reg.TYPE === "STRUCT") {
+        return reg.SIZE;
+    }
+    return has(TYPE_SIZES, reg.TYPE) ? TYPE_SIZES[reg.TYPE] : -1;
 }
 
-function getString(bytes, index, size)
-{
-    var value = "";
-    for(var i=0; i<size; i=i+1)
-    {
-        value = value + String.fromCharCode(bytes[index+i]);
+function decodeFlags(value, flags) {
+    var decoded = {};
+    for (var i = 0; i < flags.length; i = i + 1) {
+        var bit = Math.floor(value / Math.pow(2, flags[i].BIT)) % 2;
+        decoded[flags[i].NAME] = flags[i].VALUES[bit];
+    }
+    return decoded;
+}
+
+function enumLabel(values, raw) {
+    return has(values, raw) ? values[raw] : "UNKNOWN (" + raw + ")";
+}
+
+function scale(raw, reg) {
+    if (reg.RESOLUTION) {
+        return round(raw * reg.RESOLUTION, reg.DECIMALS === undefined ? 3 : reg.DECIMALS);
+    }
+    return raw;
+}
+
+/* NaN and infinities (meter read errors) decode as null. */
+function scaleFloat(raw, reg, defaultDecimals) {
+    if (raw === null) {
+        return null;
+    }
+    if (reg.RESOLUTION) {
+        raw = raw * reg.RESOLUTION;
+    }
+    return round(raw, reg.DECIMALS === undefined ? defaultDecimals : reg.DECIMALS);
+}
+
+function round(value, decimals) {
+    return parseFloat(value.toFixed(decimals));
+}
+
+/************************************************************************************************************/
+/* Byte helpers (no DataView, typed arrays or 32-bit shifts on values above 2^31)                          */
+/************************************************************************************************************/
+
+function registerKey(bytes, index) {
+    if (index + 2 > bytes.length) {
+        return null;
+    }
+    return "0x" + byteToHex(bytes[index]) + byteToHex(bytes[index + 1]);
+}
+
+function byteToHex(value) {
+    var hex = value.toString(16).toUpperCase();
+    return hex.length === 1 ? "0" + hex : hex;
+}
+
+function readUint(bytes, index, size) {
+    var value = 0;
+    for (var i = 0; i < size; i = i + 1) {
+        value = value * 256 + bytes[index + i];
     }
     return value;
 }
 
-function getUnsignedBigEndian(bytes, index, size)
-{
+function readUintLE(bytes, index, size) {
     var value = 0;
-    for(var i=0; i<(size-1); i=i+1)
-    {
-        value = (value | bytes[index+i]) << 8; 
+    for (var i = size - 1; i >= 0; i = i - 1) {
+        value = value * 256 + bytes[index + i];
     }
-    value = value | bytes[index+size-1];
-    return (value >>> 0); // to unsigned
+    return value;
 }
 
-function getUnsignedLittleEndian(bytes, index, size)
-{
-    var value = 0;
-    for(var i=(size-1); i>0; i=i-1)
-    {
-        value = (value | bytes[index+i]) << 8; 
+function readInt(bytes, index, size) {
+    var value = readUint(bytes, index, size);
+    var range = Math.pow(2, 8 * size);
+    return value >= range / 2 ? value - range : value;
+}
+
+function readString(bytes, index, length) {
+    var text = "";
+    for (var i = 0; i < length; i = i + 1) {
+        text = text + String.fromCharCode(bytes[index + i]);
     }
-    value = value | bytes[index];
-    return (value >>> 0); // to unsigned
+    return text;
 }
 
-
-function getHexString(bytes, index, size)
-{
-  var hexString = [];
-  for(var i=0; i<size; i=i+1)
-  {
-    hexString.push(bytes[index+i].toString(16));
-  }
-  return hexString;
+/* IEEE 754 single precision, big endian. */
+function readFloat32(bytes, index) {
+    var bits = readUint(bytes, index, 4);
+    var sign = bits >= 0x80000000 ? -1 : 1;
+    var exponent = Math.floor(bits / 0x800000) % 0x100;
+    var mantissa = bits % 0x800000;
+    if (exponent === 0xFF) {
+        return null;
+    }
+    if (exponent === 0) {
+        return sign * mantissa * Math.pow(2, -149);
+    }
+    return sign * (1 + mantissa / 0x800000) * Math.pow(2, exponent - 127);
 }
 
-function getHexStringEven(bytes, index, size)
-{
-  var hexString = [];
-  for(var i=0; i<size; i=i+1)
-  {
-    hexString.push(bytes[index+i].toString(16));
-  }
-  return hexString.map(toEvenHEX);
+/* IEEE 754 double precision, big endian. */
+function readFloat64(bytes, index) {
+    var high = readUint(bytes, index, 4);
+    var low = readUint(bytes, index + 4, 4);
+    var sign = high >= 0x80000000 ? -1 : 1;
+    var exponent = Math.floor(high / 0x100000) % 0x800;
+    var mantissa = (high % 0x100000) * 0x100000000 + low;
+    if (exponent === 0x7FF) {
+        return null;
+    }
+    if (exponent === 0) {
+        return sign * mantissa * Math.pow(2, -1074);
+    }
+    return sign * (1 + mantissa / Math.pow(2, 52)) * Math.pow(2, exponent - 1023);
 }
 
-function toEvenHEX(hex)
-{
-  if(hex.length == 1)
-  {
-    return "0"+hex;
-  }
-  return hex;
-}
-
-function byteToEvenHEX(singleByte)
-{
-    return toEvenHEX(singleByte.toString(16).toUpperCase());
-}
-
-function getSigned(unsigned, size) 
-{
-    var signMask = 1 << (size * 8 - 1);
-    var dataMask = (1 << (size * 8 - 1)) - 1;
-    if(unsigned & signMask) 
-    {
-        return -(~unsigned & dataMask) - 1;
-    }else 
-    {
-        return unsigned & dataMask;
+function writeUint(out, value, size) {
+    for (var i = size - 1; i >= 0; i = i - 1) {
+        out.push(Math.floor(value / Math.pow(2, 8 * i)) % 256);
     }
 }
 
-function getBit(val, idx)
-{
-    var bitMask = 0x01 << idx;
-    if(val & bitMask)
-    {
-        return true;
+/************************************************************************************************************/
+/* Downlink encoding                                                                                        */
+/************************************************************************************************************/
+
+/*
+ * Commands (see IQ-DEM.txt for examples):
+ *   {"fPort": 50, "Type": "Config", "Config": [{"Param": "adr", "Value": 1}]}
+ *   {"fPort": 100, "Type": "Reading", "Reading": ["adr", "sf"]}
+ *   {"fPort": 1-10, "Type": "Periodic", "Periodic": {"UplinkInterval": 15, "Mode": 0, "Status": 1,
+ *       "Registers": ["voltageL1N"]}}      (any subset of the four fields)
+ *   {"fPort": 11, "Type": "MaxDemand", "MaxDemand": {"Register": "currentMaxDemandTotal", "Mode": 0,
+ *       "Status": 1, "DataloggerInterval": 5, "UplinkInterval": 30}}      (all five fields)
+ */
+function encodeCommand(fPort, command) {
+    var result = {bytes: [], fPort: fPort, errors: [], warnings: []};
+    if (!command || typeof command !== "object" || !has(command, "Type")) {
+        addError(result, MESSAGES.CMD_INVALID + ": please add Type to the command");
+    } else if (command.Type === "Config") {
+        if (fPort !== FPORT.GENERIC) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodeConfig(command.Config, result);
+        }
+    } else if (command.Type === "Reading") {
+        if (fPort !== FPORT.READING) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodeReading(command.Reading, result);
+        }
+    } else if (command.Type === "Periodic") {
+        if (fPort < FPORT.PERIODIC_MIN || fPort > FPORT.PERIODIC_MAX) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodePeriodic(command.Periodic, result);
+        }
+    } else if (command.Type === "MaxDemand") {
+        if (fPort !== FPORT.MAX_DEMAND_CONFIG) {
+            addError(result, MESSAGES.CMD_FPORT_INVALID);
+        } else {
+            encodeMaxDemand(command.MaxDemand, result);
+        }
+    } else {
+        addError(result, MESSAGES.CMD_INVALID + ": please check " + command.Type + " in the command");
+    }
+    if (result.errors.length === 0 && result.bytes.length > LIMITS.DOWNLINK_SIZE) {
+        addError(result, MESSAGES.CMD_TOO_LONG + ": " + result.bytes.length + " bytes, the device accepts at most " +
+            LIMITS.DOWNLINK_SIZE);
+    }
+    if (result.errors.length > 0) {
+        result.bytes = [];
+    }
+    return result;
+}
+
+function encodeConfig(list, result) {
+    if (!isArray(list) || list.length < 1 || list.length > LIMITS.COMMAND_REGISTERS) {
+        addError(result, MESSAGES.CMD_REGISTER_NUMBER_INVALID + ": please check Config in the command");
+        return;
+    }
+    for (var i = 0; i < list.length; i = i + 1) {
+        var item = list[i];
+        if (!item || typeof item !== "object" || !has(item, "Param") || !has(item, "Value")) {
+            addError(result, MESSAGES.CMD_INVALID + ": please add Param and Value to each object in the Config array");
+            return;
+        }
+        var key = lookupRegister(item.Param, "W", result);
+        if (key === null) {
+            return;
+        }
+        var value = encodeValue(REGISTERS[key], item.Value);
+        if (value === null) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check " + item.Param + " in the command");
+            return;
+        }
+        writeUint(result.bytes, parseInt(key, 16), 2);
+        for (var j = 0; j < value.length; j = j + 1) {
+            result.bytes.push(value[j]);
+        }
+    }
+}
+
+function encodeReading(list, result) {
+    if (!isArray(list) || list.length < 1 || list.length > LIMITS.COMMAND_REGISTERS) {
+        addError(result, MESSAGES.CMD_REGISTER_NUMBER_INVALID + ": please check Reading in the command");
+        return;
+    }
+    result.bytes.push(READING.CHANNEL);
+    result.bytes.push(READING.TYPE);
+    for (var i = 0; i < list.length; i = i + 1) {
+        var key = lookupRegister(list[i], "R", result);
+        if (key === null) {
+            return;
+        }
+        writeUint(result.bytes, parseInt(key, 16), 2);
+    }
+}
+
+function encodePeriodic(config, result) {
+    if (!config || typeof config !== "object") {
+        addError(result, MESSAGES.CMD_INVALID + ": please add Periodic object to the command");
+        return;
+    }
+    var fields = 0;
+    if (has(config, "UplinkInterval")) {
+        // Minutes; the firmware rejects 0.
+        if (!isInterval(config.UplinkInterval)) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check UplinkInterval in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.INTERVAL);
+        writeUint(result.bytes, config.UplinkInterval, 2);
+        fields = fields + 1;
+    }
+    if (has(config, "Mode")) {
+        if (config.Mode !== 0 && config.Mode !== 1) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Mode in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.MODE, config.Mode);
+        fields = fields + 1;
+    }
+    if (has(config, "Status")) {
+        if (config.Status !== 0 && config.Status !== 1) {
+            addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Status in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.STATUS, config.Status);
+        fields = fields + 1;
+    }
+    if (has(config, "Registers")) {
+        var list = config.Registers;
+        if (!isArray(list) || list.length < 1 || list.length > LIMITS.COMMAND_REGISTERS) {
+            addError(result, MESSAGES.CMD_REGISTER_NUMBER_INVALID + ": please check Registers in the command");
+            return;
+        }
+        result.bytes.push(PERIODIC.CHANNEL, PERIODIC.REGISTERS, list.length * 2);
+        for (var i = 0; i < list.length; i = i + 1) {
+            var key = lookupRegister(list[i], "R", result);
+            if (key === null) {
+                return;
+            }
+            writeUint(result.bytes, parseInt(key, 16), 2);
+        }
+        fields = fields + 1;
+    }
+    if (fields === 0) {
+        addError(result, MESSAGES.CMD_INVALID + ": please add UplinkInterval, Mode, Status or Registers");
+    }
+}
+
+/* The firmware only accepts the five fields together; intervals are minutes and not 0. */
+function encodeMaxDemand(config, result) {
+    if (!config || typeof config !== "object") {
+        addError(result, MESSAGES.CMD_INVALID + ": please add MaxDemand object to the command");
+        return;
+    }
+    var fields = ["Register", "Mode", "Status", "DataloggerInterval", "UplinkInterval"];
+    for (var i = 0; i < fields.length; i = i + 1) {
+        if (!has(config, fields[i])) {
+            addError(result, MESSAGES.CMD_INVALID + ": please add " + fields[i] + " to MaxDemand");
+            return;
+        }
+    }
+    var name = config.Register;
+    var keys = registerKeys();
+    if (typeof name !== "string" || !has(keys, name) || REGISTERS[keys[name]].MAX_DEMAND !== true) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Register in the command");
+        return;
+    }
+    if (config.Mode !== 0 && config.Mode !== 1) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Mode in the command");
+        return;
+    }
+    if (config.Status !== 0 && config.Status !== 1) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check Status in the command");
+        return;
+    }
+    if (!isInterval(config.DataloggerInterval)) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check DataloggerInterval in the command");
+        return;
+    }
+    if (!isInterval(config.UplinkInterval)) {
+        addError(result, MESSAGES.CMD_DATA_INVALID + ": please check UplinkInterval in the command");
+        return;
+    }
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.REGISTER);
+    writeUint(result.bytes, parseInt(keys[name], 16), 2);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.MODE, config.Mode);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.STATUS, config.Status);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.DATALOGGER_INTERVAL);
+    writeUint(result.bytes, config.DataloggerInterval, 2);
+    result.bytes.push(MAX_DEMAND_CONFIG.CHANNEL, MAX_DEMAND_CONFIG.UPLINK_INTERVAL);
+    writeUint(result.bytes, config.UplinkInterval, 2);
+}
+
+/* Interval in minutes: 1 to 65535. */
+function isInterval(value) {
+    return isInteger(value) && value >= 1 && value <= 0xFFFF;
+}
+
+/* @returns the register key, or null after adding an error */
+function lookupRegister(name, access, result) {
+    var keys = registerKeys();
+    if (typeof name !== "string" || !has(keys, name)) {
+        addError(result, MESSAGES.CMD_REGISTER_NOT_FOUND + ": please check " + name + " in the command");
+        return null;
+    }
+    var key = keys[name];
+    if (REGISTERS[key].RW.indexOf(access) < 0) {
+        addError(result, (access === "W" ? MESSAGES.CMD_REGISTER_NOT_WRITABLE : MESSAGES.CMD_REGISTER_NOT_READABLE) +
+            ": please check " + name + " in the command");
+        return null;
+    }
+    return key;
+}
+
+/* @returns the value bytes, or null when the value is not acceptable */
+function encodeValue(reg, value) {
+    var out = [];
+    if (reg.TYPE === "STR") {
+        var maxLength = reg.MAX === undefined ? LIMITS.STRING_LENGTH : reg.MAX;
+        if (typeof value !== "string" || value.length > maxLength) {
+            return null;
+        }
+        out.push(value.length);
+        for (var i = 0; i < value.length; i = i + 1) {
+            if (value.charCodeAt(i) > 0x7F) {
+                return null; // ASCII only
+            }
+            out.push(value.charCodeAt(i));
+        }
+        return out;
+    }
+    if (reg.TYPE === "ENUM") {
+        var raw = enumValue(reg.VALUES, value);
+        if (raw === null || (reg.MIN !== undefined && raw < reg.MIN) || (reg.MAX !== undefined && raw > reg.MAX)) {
+            return null;
+        }
+        out.push(raw);
+        return out;
+    }
+    if (!has(TYPE_SIZES, reg.TYPE) || (reg.TYPE.charAt(0) !== "U" && reg.TYPE.charAt(0) !== "I")) {
+        return null; // F32, F64, VER, VER3, FLAGS and STRUCT registers are not writable here
+    }
+    if (typeof value !== "number" || !isFinite(value) ||
+            (reg.MIN !== undefined && value < reg.MIN) || (reg.MAX !== undefined && value > reg.MAX) ||
+            (reg.ALLOWED !== undefined && !contains(reg.ALLOWED, value))) {
+        return null;
+    }
+    var size = TYPE_SIZES[reg.TYPE];
+    var number = reg.RESOLUTION ? Math.round(value / reg.RESOLUTION) : value;
+    var range = Math.pow(2, 8 * size);
+    var signed = reg.TYPE.charAt(0) === "I";
+    if (!isInteger(number) || number < (signed ? -range / 2 : 0) || number > (signed ? range / 2 - 1 : range - 1)) {
+        return null;
+    }
+    writeUint(out, number < 0 ? number + range : number, size);
+    return out;
+}
+
+/* ENUM writes accept the raw value (1) or its label ("ENABLED"). */
+function enumValue(values, value) {
+    if (typeof value === "number" && has(values, value)) {
+        return value;
+    }
+    for (var raw in values) {
+        if (has(values, raw) && values[raw] === value) {
+            return parseInt(raw, 10);
+        }
+    }
+    return null;
+}
+
+/************************************************************************************************************/
+/* Shared helpers                                                                                           */
+/************************************************************************************************************/
+
+function registerKeys() {
+    if (REGISTER_KEYS === null) {
+        REGISTER_KEYS = indexRegisterNames(REGISTERS);
+    }
+    return REGISTER_KEYS;
+}
+
+function indexRegisterNames(registers) {
+    var names = {};
+    for (var key in registers) {
+        if (has(registers, key)) {
+            names[registers[key].NAME] = key;
+        }
+    }
+    return names;
+}
+
+function contains(list, value) {
+    for (var i = 0; i < list.length; i = i + 1) {
+        if (list[i] === value) {
+            return true;
+        }
     }
     return false;
 }
 
-function getFlags(val, possibleFlags)
-{
-    var flags = {};
-    for(var i=0; i<possibleFlags.length; i=i+1)
-    {
-        var flag = possibleFlags[i];
-        flags[flag.NAME] = flag[getBit(val, flag.BIT).toString()];
-    }
-    return flags;
+function has(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
 }
 
-/**
- * @brief Convert bytes to IEEE float32
- * @param {Array} bytes uplink bytes
- * @param {Number} index current index in bytes
- * @returns {Number | null} float32 number or null
- * @compatibility This is compatible with old JS engine (ES3/ES4)
- */
-function getFloat32(bytes, index) {
-    var b0 = bytes[index];
-    var b1 = bytes[index+1];
-    var b2 = bytes[index+2];
-    var b3 = bytes[index+3];
-
-    var bits = (b0 << 24) | (b1 << 16) | (b2 << 8) | b3;
-
-    var sign = (bits >>> 31) ? -1 : 1;
-    var exponent = (bits >>> 23) & 0xFF;
-    var mantissa = bits & 0x7FFFFF;
-
-    if (exponent === 0xFF) {
-        // mantissa ? NaN : sign * Infinity;
-        return null;
-    }
-
-    if (exponent === 0) {
-        return sign * mantissa * Math.pow(2, -149);
-    }
-
-    return sign * (1 + mantissa / 0x800000) * Math.pow(2, exponent - 127);
+// ChirpStack v3 (otto) passes the lists of the Encode() object as Go slices: they inherit
+// Array.prototype, but Object.prototype.toString reports them as "[object GoArray]".
+function isArray(value) {
+    return Object.prototype.toString.call(value) === "[object Array]" || value instanceof Array;
 }
 
-/**
- * @brief Convert bytes to IEEE float64
- * @param {Array} bytes uplink bytes
- * @param {Number} index current index in bytes
- * @returns {Number | null} float64 number or null
- * @compatibility This is compatible with old JS engine (ES3/ES4)
- */
-function getFloat64(bytes, index) {
-    var hi = (bytes[index] * 0x1000000) + (bytes[index+1] << 16) +
-            (bytes[index+2] << 8) + bytes[index+3];
-    var lo = (bytes[index+4] * 0x1000000) + (bytes[index+5] << 16) +
-            (bytes[index+6] << 8) + bytes[index+7];
+function isInteger(value) {
+    return typeof value === "number" && isFinite(value) && Math.floor(value) === value;
+}
 
-    var sign = (hi >>> 31) ? -1 : 1;
-    var exponent = (hi >>> 20) & 0x7FF;
-
-    var mantissaHigh = hi & 0xFFFFF;
-    var mantissa = mantissaHigh * Math.pow(2, 32) + lo;
-
-    if (exponent === 0x7FF) {
-        // mantissa ? NaN : sign * Infinity;
-        return null;
+/* Errors mean "nothing decoded / nothing encoded": ChirpStack v4 drops an uplink whose errors array is not empty. */
+function addError(result, message) {
+    result.errors.push(message);
+    if (result.data) {
+        result.data.error = message;
     }
+}
 
-    if (exponent === 0) {
-        return sign * mantissa * Math.pow(2, -1074);
+function addWarning(result, message) {
+    result.warnings.push(message);
+    if (result.data) {
+        result.data.warning = message;
     }
-
-    return sign *
-           (1 + mantissa / Math.pow(2, 52)) *
-           Math.pow(2, exponent - 1023);
 }
 
 /************************************************************************************************************/
+/* Entry points                                                                                             */
+/************************************************************************************************************/
 
-// Decode decodes an array of bytes into an object. (ChirpStack v3)
-//  - fPort contains the LoRaWAN fPort number
-//  - bytes is an array of bytes, e.g. [225, 230, 255, 0]
-//  - variables contains the device variables e.g. {"calibration": "3.5"} (both the key / value are of type string)
-// The function must return an object, e.g. {"temperature": 22.5}
-function Decode(fPort, bytes, variables) 
-{
-    var decoded = {};
-    if(fPort == 0){
-        decoded = {mac: UPLINK.MAC.MSG, fPort: fPort};
-    }else if(fPort >= UPLINK.FUOTA.FPORT_MIN && fPort <= UPLINK.FUOTA.FPORT_MAX){
-        decoded[UPLINK.INFO_NAME] = UPLINK.FUOTA.MSG;
-    }else if(fPort == UPLINK.FMP.FPORT){
-        decoded = decodeFmpAnswers(bytes);
-        decoded[UPLINK.INFO_NAME] = UPLINK.FMP.MSG;
-    }else if(bytes.length == 1){
-        if(bytes[0] == 0){
-            decoded[UPLINK.INFO_NAME] = UPLINK.DOWNLINK.SUCCESS;
-        }else if(bytes[0] == 1){
-            decoded[UPLINK.WARNING_NAME] = UPLINK.DOWNLINK.FAILURE;
-        } 
-    }else if(fPort >= UPLINK.GENERIC_DATA.FPORT_MIN && fPort <= UPLINK.GENERIC_DATA.FPORT_MAX){
-        decoded = decodeRegisters(bytes);
-    }else if(fPort >= UPLINK.DEVICE_DATA.FPORT_MIN && fPort <= UPLINK.DEVICE_DATA.FPORT_MAX){
-        decoded = decodeRegisters(bytes);
-    }else if(fPort == UPLINK.ALARM_DATA.FPORT){
-        decoded = decodeRegisters(bytes);
-    }else if(fPort == UPLINK.MAX_DEMAND_DATA.FPORT){
-        decoded = decodeMaxDemandHistoricData(bytes);
-    }else if(fPort == UPLINK.PARAMETER_DATA.FPORT){
-        decoded = decodeRegisters(bytes);
-    }else{
-        decoded.fPort = fPort;
-        decoded[UPLINK.ERROR_NAME] = UPLINK.ERRORS.FPORT_INCORRECT;
-    }
-    decoded[VERSION_CONTROL.CODEC.NAME] = VERSION_CONTROL.CODEC.VERSION;
-    decoded[VERSION_CONTROL.DEVICE.NAME] = VERSION_CONTROL.DEVICE.MODEL;
-    decoded[VERSION_CONTROL.PRODUCT.NAME] = VERSION_CONTROL.PRODUCT.CODE;
-    decoded[VERSION_CONTROL.MANUFACTURER.NAME] = VERSION_CONTROL.MANUFACTURER.COMPANY;
-    return decoded;
-}
-
-// Decode uplink function. (ChirpStack v4, TTN, TTI, LORIOT, ThingPark)
-//
-// Input is an object with the following fields:
-// - bytes = Byte array containing the uplink payload, e.g. [255, 230, 255, 0]
-// - fPort = Uplink fPort.
-// - variables = Object containing the configured device variables.
-//
-// Output must be an object with the following fields:
-// - data = Object representing the decoded payload.
+// LoRa Alliance TS013: ChirpStack v4, TTN/TTI, LORIOT, ThingPark.
+// input = {bytes: [..], fPort: n, recvTime: Date, variables: {..}}
 function decodeUplink(input) {
-    var errors = [];
-    var warnings = [];
-    var decoded = Decode(input.fPort, input.bytes, input.variables);
-    if(UPLINK.ERROR_NAME in decoded){
-        errors.push(decoded[UPLINK.ERROR_NAME]);
-    }
-    if(UPLINK.WARNING_NAME in decoded){
-        warnings.push(decoded[UPLINK.WARNING_NAME]);
-    }
-    return {
-        data: decoded,
-        errors: errors,
-        warnings: warnings
-    };
+    return decodePayload(input.fPort, input.bytes);
 }
 
-/*************************************************************************************************************/
-// Constants for device downlink 
-var DEVICE = {
-
-    DOWNLINK : {
-        TYPE    : "Type",
-        CONFIG  : "Config",
-        PERIODIC: "Periodic",
-        READING : "Reading"
-    },
-    CONFIG : {
-        FPORT: 50,
-        CHANNEL : 0xFF,
-        REG_MIN_NUMBER : 1,  // downlink min number of registers
-        REG_MAX_NUMBER : 10  // downlink max number of registers
-    },
-    PERIODIC : {
-        FPORT_MIN: 1,
-        FPORT_MAX: 10,
-        CHANNEL : 0xFF,
-        INTERVAL_TYPE : 0x14,
-        MODE_TYPE : 0x15,
-        STATUS_TYPE : 0x16,
-        REGISTERS_TYPE : 0x17,
-        REG_MIN_NUMBER : 1,  // downlink min number of registers
-        REG_MAX_NUMBER : 10  // downlink max number of registers
-    },
-    READING: {
-        FPORT: 100,
-        CHANNEL : 0xFF,
-        TYPE : 0xCC,
-        REG_MIN_NUMBER : 1,  // downlink min number of registers
-        REG_MAX_NUMBER : 10  // downlink max number of registers
-    },
-
-    REGISTERS : {
-        /* device registers */
-        // SIZE, MIN and MAX are required if the register is writable (RW permission is "W" or "RW")
-        // "registerName": {ADDR: <address>, RW: <"R"/"W"/"RW">, SIZE: <data_size>, MIN: <min>, MAX: <max> }
-
-        /* generic registers */
-        "buildingName": {ADDR: 0xFF32, SIZE: 0, RW:"R"},
-        "buildingRoom": {ADDR: 0xFF33, SIZE: 0, RW:"R"},
-        "deviceName": {ADDR: 0xFF34, SIZE: 0, RW:"R"},
-        "deviceStatus": {ADDR: 0xFF64, RW:"R"},
-        "manufacturer": {ADDR: 0xFF65, RW:"R"},
-        "originalEquipmentManufacturer": {ADDR: 0xFF66, RW:"R"},
-        "deviceModel": {ADDR: 0xFF67, RW:"R"},
-        "deviceSerialNumber": {ADDR: 0xFF68, RW:"R"},
-        "firmwareVersion": {ADDR: 0xFF69, RW:"R"},
-        "hardwareVersion": {ADDR: 0xFF6A, RW:"R"},
-        "externalPowerStatus": {ADDR: 0xFF6B, RW:"R"},
-        "batteryVoltage": {ADDR: 0xFF6C, RW:"R"},
-        "batteryPercentage": {ADDR: 0xFF6D, RW:"R"},
-        // skip ADDR 0xFF6E
-        "rebootDevice": {ADDR: 0xFF6F, SIZE: 1, MIN: 1, MAX: 1, RW:"W"},
-
-        "internalCircuitTemperatureAlarm": {ADDR: 0xFF78, RW:"R"},
-        "internalCircuitTemperatureNumberOfAlarms": {ADDR: 0xFF79, RW:"R"},
-        "internalCircuitTemperature": {ADDR: 0xFF7A, RW:"R"},
-        "internalCircuitHumidity": {ADDR: 0xFF7B, RW:"R"},
-
-        "ambientTemperature": {ADDR: 0xFF82, RW:"R"},
-        "ambientHumidity": {ADDR: 0xFF83, RW:"R"},
-
-        "restartLoRaWAN": {ADDR: 0xFF95, SIZE: 1, MIN: 1, MAX: 1, RW:"W"},
-        "joinStatus": {ADDR: 0xFF96, RW:"R"},
-        "radioModule": {ADDR: 0xFF97, RW:"R"},
-        "lorawanRegion": {ADDR: 0xFF98, SIZE: 1, MIN: 0, MAX: 3, RW:"RW"},
-        "lorawanVersion": {ADDR: 0xFF99, RW:"R"},
-        
-        "applicationPort": {ADDR: 0xFF9D, SIZE: 1, MIN: 50, MAX: 99, RW:"RW"},
-        "joinType": {ADDR: 0xFF9E, RW:"RW"},
-        "deviceClass": {ADDR: 0xFF9F, RW:"RW"},
-        "adr": {ADDR: 0xFFA0, SIZE: 1, MIN: 0, MAX: 1, RW:"RW"},
-        "sf": {ADDR: 0xFFA1, SIZE: 1, MIN: 0, MAX: 6, RW:"RW"},
-        "adrProfile": {ADDR: 0xFFA2, SIZE: 1, MIN: 0, MAX: 2, RW:"RW"},
-        "radioMode": {ADDR: 0xFFA3, SIZE: 1, MIN: 0, MAX: 2, RW:"RW"},
-        "numberOfJoinAttempts": {ADDR: 0xFFA4, SIZE: 1, MIN: 0, MAX: 0xFF, RW:"RW"},
-        "linkCheckTimeframe": {ADDR: 0xFFA5, SIZE: 2, MIN: 1, MAX: 0xFFFF, RW:"RW"},
-        "dataRetransmission": {ADDR: 0xFFA6, SIZE: 1, MIN: 0, MAX: 1, RW:"RW"},
-        "lorawanWatchdogAlarm": {ADDR: 0xFFA7, SIZE: 1, MIN: 0, MAX: 1, RW:"R"},
-
-
-        /* specific registers */
-        "electricalCabinet": {ADDR: 0xEE3C, SIZE: 0, RW: "RW"},
-        "electricalGroup": {ADDR: 0xEE3D, SIZE: 0, RW: "RW"},
-        "serialWatchdogAlarm": {ADDR: 0x6000, RW: "R"},
-        "serialModbusSlaveId": {ADDR: 0x6001, SIZE: 1, MIN: 1, MAX: 247, RW: "RW"},
-        "serialStopBits": {ADDR: 0x6002, RW: "R"},
-        "serialParity": {ADDR: 0x6003, RW: "R"},
-        "serialDataWidth": {ADDR: 0x6004, RW: "R"},
-        "serialBaudRate": {ADDR: 0x6005, RW: "R"},
-        "serialModbusExecutionInterval": {ADDR: 0x6009, SIZE: 2, MIN: 50, MAX: 60000, RW: "RW"},
-        "serialModbusResponseTimeout": {ADDR: 0x600A, SIZE: 2, MIN: 10, MAX: 60000, RW: "RW"},
-        "serialModbusMaxRetries": {ADDR: 0x600C, SIZE: 1, MIN: 1, MAX: 5, RW: "RW"},
-        "frequency": {ADDR: 0x0000, RW: "R"},
-        "phaseSequence": {ADDR: 0x0010, RW: "R"},
-        "voltageAvgLN": {ADDR: 0x0100, RW: "R"},
-        "voltageL1N": {ADDR: 0x0101, RW: "R"},
-        "voltageL2N": {ADDR: 0x0102, RW: "R"},
-        "voltageL3N": {ADDR: 0x0103, RW: "R"},
-        "voltageL1L2": {ADDR: 0x0104, RW: "R"},
-        "voltageL2L3": {ADDR: 0x0105, RW: "R"},
-        "voltageL3L1": {ADDR: 0x0106, RW: "R"},
-        "voltageAvgLL": {ADDR: 0x0107, RW: "R"},
-        "voltageThdL1": {ADDR: 0x0111, RW: "R"},
-        "voltageThdL2": {ADDR: 0x0112, RW: "R"},
-        "voltageThdL3": {ADDR: 0x0113, RW: "R"},
-        "currentTotal": {ADDR: 0x0200, RW: "R"},
-        "currentL1": {ADDR: 0x0201, RW: "R"},
-        "currentL2": {ADDR: 0x0202, RW: "R"},
-        "currentL3": {ADDR: 0x0203, RW: "R"},
-        "currentNeutral": {ADDR: 0x0204, RW: "R"},
-        "currentThdL1": {ADDR: 0x0211, RW: "R"},
-        "currentThdL2": {ADDR: 0x0212, RW: "R"},
-        "currentThdL3": {ADDR: 0x0213, RW: "R"},
-        "currentAvg": {ADDR: 0x0220, RW: "R"},
-        "currentAvgL1": {ADDR: 0x0221, RW: "R"},
-        "currentAvgL2": {ADDR: 0x0222, RW: "R"},
-        "currentAvgL3": {ADDR: 0x0223, RW: "R"},
-        "currentDemandTotal": {ADDR: 0x02D0, RW: "R"},
-        "currentDemandL1": {ADDR: 0x02D1, RW: "R"},
-        "currentDemandL2": {ADDR: 0x02D2, RW: "R"},
-        "currentDemandL3": {ADDR: 0x02D3, RW: "R"},
-        "currentMaxDemandTotal": {ADDR: 0x02E0, RW: "R"},
-        "currentMaxDemandL1": {ADDR: 0x02E1, RW: "R"},
-        "currentMaxDemandL2": {ADDR: 0x02E2, RW: "R"},
-        "currentMaxDemandL3": {ADDR: 0x02E3, RW: "R"},
-        "activePowerTotal": {ADDR: 0x0300, RW: "R"},
-        "activePowerL1": {ADDR: 0x0301, RW: "R"},
-        "activePowerL2": {ADDR: 0x0302, RW: "R"},
-        "activePowerL3": {ADDR: 0x0303, RW: "R"},
-        "activePowerImportDemand": {ADDR: 0x0310, RW: "R"},
-        "activePowerExportDemand": {ADDR: 0x0320, RW: "R"},
-        "activePowerImportMaxDemand": {ADDR: 0x0330, RW: "R"},
-        "activePowerExportMaxDemand": {ADDR: 0x0340, RW: "R"},
-        "reactivePowerTotal": {ADDR: 0x0350, RW: "R"},
-        "reactivePowerL1": {ADDR: 0x0351, RW: "R"},
-        "reactivePowerL2": {ADDR: 0x0352, RW: "R"},
-        "reactivePowerL3": {ADDR: 0x0353, RW: "R"},
-        "reactivePowerImportDemand": {ADDR: 0x0360, RW: "R"},
-        "reactivePowerExportDemand": {ADDR: 0x0370, RW: "R"},
-        "reactivePowerImportMaxDemand": {ADDR: 0x0380, RW: "R"},
-        "reactivePowerExportMaxDemand": {ADDR: 0x0390, RW: "R"},
-        "apparentPowerTotal": {ADDR: 0x03A0, RW: "R"},
-        "apparentPowerL1": {ADDR: 0x03A1, RW: "R"},
-        "apparentPowerL2": {ADDR: 0x03A2, RW: "R"},
-        "apparentPowerL3": {ADDR: 0x03A3, RW: "R"},
-        "apparentPowerDemand": {ADDR: 0x03B0, RW: "R"},
-        "apparentPowerMaxDemand": {ADDR: 0x03C0, RW: "R"},
-        "phaseAngleL1": {ADDR: 0x03D1, RW: "R"},
-        "phaseAngleL2": {ADDR: 0x03D2, RW: "R"},
-        "phaseAngleL3": {ADDR: 0x03D3, RW: "R"},
-        "cosPhiL1": {ADDR: 0x03E1, RW: "R"},
-        "cosPhiL2": {ADDR: 0x03E2, RW: "R"},
-        "cosPhiL3": {ADDR: 0x03E3, RW: "R"},
-        "powerFactorSystem": {ADDR: 0x03F0, RW: "R"},
-        "powerFactorL1": {ADDR: 0x03F1, RW: "R"},
-        "powerFactorL2": {ADDR: 0x03F2, RW: "R"},
-        "powerFactorL3": {ADDR: 0x03F3, RW: "R"},
-        "importActiveEnergySystem": {ADDR: 0x0400, RW: "R"},
-        "importActiveEnergyL1": {ADDR: 0x0401, RW: "R"},
-        "importActiveEnergyL2": {ADDR: 0x0402, RW: "R"},
-        "importActiveEnergyL3": {ADDR: 0x0403, RW: "R"},
-        "importActiveEnergySystemT1": {ADDR: 0x0410, RW: "R"},
-        "importActiveEnergyL1T1": {ADDR: 0x0411, RW: "R"},
-        "importActiveEnergyL2T1": {ADDR: 0x0412, RW: "R"},
-        "importActiveEnergyL3T1": {ADDR: 0x0413, RW: "R"},
-        "importActiveEnergySystemT2": {ADDR: 0x0420, RW: "R"},
-        "importActiveEnergyL1T2": {ADDR: 0x0421, RW: "R"},
-        "importActiveEnergyL2T2": {ADDR: 0x0422, RW: "R"},
-        "importActiveEnergyL3T2": {ADDR: 0x0423, RW: "R"},
-        "importActiveEnergySystemT3": {ADDR: 0x0430, RW: "R"},
-        "importActiveEnergyL1T3": {ADDR: 0x0431, RW: "R"},
-        "importActiveEnergyL2T3": {ADDR: 0x0432, RW: "R"},
-        "importActiveEnergyL3T3": {ADDR: 0x0433, RW: "R"},
-        "importActiveEnergySystemT4": {ADDR: 0x0440, RW: "R"},
-        "importActiveEnergyL1T4": {ADDR: 0x0441, RW: "R"},
-        "importActiveEnergyL2T4": {ADDR: 0x0442, RW: "R"},
-        "importActiveEnergyL3T4": {ADDR: 0x0443, RW: "R"},
-        "importActiveEnergySystemPartial": {ADDR: 0x04A0, RW: "R"},
-        "importActiveEnergyL1Partial": {ADDR: 0x04A1, RW: "R"},
-        "importActiveEnergyL2Partial": {ADDR: 0x04A2, RW: "R"},
-        "importActiveEnergyL3Partial": {ADDR: 0x04A3, RW: "R"},
-        "exportActiveEnergySystem": {ADDR: 0x0500, RW: "R"},
-        "exportActiveEnergyL1": {ADDR: 0x0501, RW: "R"},
-        "exportActiveEnergyL2": {ADDR: 0x0502, RW: "R"},
-        "exportActiveEnergyL3": {ADDR: 0x0503, RW: "R"},
-        "exportActiveEnergySystemT1": {ADDR: 0x0510, RW: "R"},
-        "exportActiveEnergyL1T1": {ADDR: 0x0511, RW: "R"},
-        "exportActiveEnergyL2T1": {ADDR: 0x0512, RW: "R"},
-        "exportActiveEnergyL3T1": {ADDR: 0x0513, RW: "R"},
-        "exportActiveEnergySystemT2": {ADDR: 0x0520, RW: "R"},
-        "exportActiveEnergyL1T2": {ADDR: 0x0521, RW: "R"},
-        "exportActiveEnergyL2T2": {ADDR: 0x0522, RW: "R"},
-        "exportActiveEnergyL3T2": {ADDR: 0x0523, RW: "R"},
-        "exportActiveEnergySystemT3": {ADDR: 0x0530, RW: "R"},
-        "exportActiveEnergyL1T3": {ADDR: 0x0531, RW: "R"},
-        "exportActiveEnergyL2T3": {ADDR: 0x0532, RW: "R"},
-        "exportActiveEnergyL3T3": {ADDR: 0x0533, RW: "R"},
-        "exportActiveEnergySystemT4": {ADDR: 0x0540, RW: "R"},
-        "exportActiveEnergyL1T4": {ADDR: 0x0541, RW: "R"},
-        "exportActiveEnergyL2T4": {ADDR: 0x0542, RW: "R"},
-        "exportActiveEnergyL3T4": {ADDR: 0x0543, RW: "R"},
-        "exportActiveEnergySystemPartial": {ADDR: 0x05A0, RW: "R"},
-        "exportActiveEnergyL1Partial": {ADDR: 0x05A1, RW: "R"},
-        "exportActiveEnergyL2Partial": {ADDR: 0x05A2, RW: "R"},
-        "exportActiveEnergyL3Partial": {ADDR: 0x05A3, RW: "R"},
-        "importReactiveEnergySystem": {ADDR: 0x0600, RW: "R"},
-        "importReactiveEnergyL1": {ADDR: 0x0601, RW: "R"},
-        "importReactiveEnergyL2": {ADDR: 0x0602, RW: "R"},
-        "importReactiveEnergyL3": {ADDR: 0x0603, RW: "R"},
-        "importReactiveEnergySystemT1": {ADDR: 0x0610, RW: "R"},
-        "importReactiveEnergyL1T1": {ADDR: 0x0611, RW: "R"},
-        "importReactiveEnergyL2T1": {ADDR: 0x0612, RW: "R"},
-        "importReactiveEnergyL3T1": {ADDR: 0x0613, RW: "R"},
-        "importReactiveEnergySystemT2": {ADDR: 0x0620, RW: "R"},
-        "importReactiveEnergyL1T2": {ADDR: 0x0621, RW: "R"},
-        "importReactiveEnergyL2T2": {ADDR: 0x0622, RW: "R"},
-        "importReactiveEnergyL3T2": {ADDR: 0x0623, RW: "R"},
-        "importReactiveEnergySystemT3": {ADDR: 0x0630, RW: "R"},
-        "importReactiveEnergyL1T3": {ADDR: 0x0631, RW: "R"},
-        "importReactiveEnergyL2T3": {ADDR: 0x0632, RW: "R"},
-        "importReactiveEnergyL3T3": {ADDR: 0x0633, RW: "R"},
-        "importReactiveEnergySystemT4": {ADDR: 0x0640, RW: "R"},
-        "importReactiveEnergyL1T4": {ADDR: 0x0641, RW: "R"},
-        "importReactiveEnergyL2T4": {ADDR: 0x0642, RW: "R"},
-        "importReactiveEnergyL3T4": {ADDR: 0x0643, RW: "R"},
-        "importReactiveEnergySystemPartial": {ADDR: 0x06A0, RW: "R"},
-        "importReactiveEnergyL1Partial": {ADDR: 0x06A1, RW: "R"},
-        "importReactiveEnergyL2Partial": {ADDR: 0x06A2, RW: "R"},
-        "importReactiveEnergyL3Partial": {ADDR: 0x06A3, RW: "R"},
-        "exportReactiveEnergySystem": {ADDR: 0x0700, RW: "R"},
-        "exportReactiveEnergyL1": {ADDR: 0x0701, RW: "R"},
-        "exportReactiveEnergyL2": {ADDR: 0x0702, RW: "R"},
-        "exportReactiveEnergyL3": {ADDR: 0x0703, RW: "R"},
-        "exportReactiveEnergySystemT1": {ADDR: 0x0710, RW: "R"},
-        "exportReactiveEnergyL1T1": {ADDR: 0x0711, RW: "R"},
-        "exportReactiveEnergyL2T1": {ADDR: 0x0712, RW: "R"},
-        "exportReactiveEnergyL3T1": {ADDR: 0x0713, RW: "R"},
-        "exportReactiveEnergySystemT2": {ADDR: 0x0720, RW: "R"},
-        "exportReactiveEnergyL1T2": {ADDR: 0x0721, RW: "R"},
-        "exportReactiveEnergyL2T2": {ADDR: 0x0722, RW: "R"},
-        "exportReactiveEnergyL3T2": {ADDR: 0x0723, RW: "R"},
-        "exportReactiveEnergySystemT3": {ADDR: 0x0730, RW: "R"},
-        "exportReactiveEnergyL1T3": {ADDR: 0x0731, RW: "R"},
-        "exportReactiveEnergyL2T3": {ADDR: 0x0732, RW: "R"},
-        "exportReactiveEnergyL3T3": {ADDR: 0x0733, RW: "R"},
-        "exportReactiveEnergySystemT4": {ADDR: 0x0740, RW: "R"},
-        "exportReactiveEnergyL1T4": {ADDR: 0x0741, RW: "R"},
-        "exportReactiveEnergyL2T4": {ADDR: 0x0742, RW: "R"},
-        "exportReactiveEnergyL3T4": {ADDR: 0x0743, RW: "R"},
-        "exportReactiveEnergySystemPartial": {ADDR: 0x07A0, RW: "R"},
-        "exportReactiveEnergyL1Partial": {ADDR: 0x07A1, RW: "R"},
-        "exportReactiveEnergyL2Partial": {ADDR: 0x07A2, RW: "R"},
-        "exportReactiveEnergyL3Partial": {ADDR: 0x07A3, RW: "R"},
-        "activeEnergyBalanceSystem": {ADDR: 0x0800, RW: "R"},
-        "activeEnergyBalanceL1": {ADDR: 0x0801, RW: "R"},
-        "activeEnergyBalanceL2": {ADDR: 0x0802, RW: "R"},
-        "activeEnergyBalanceL3": {ADDR: 0x0803, RW: "R"},
-        "reactiveEnergyBalanceSystem": {ADDR: 0x08F0, RW: "R"},
-        "reactiveEnergyBalanceL1": {ADDR: 0x08F1, RW: "R"},
-        "reactiveEnergyBalanceL2": {ADDR: 0x08F2, RW: "R"},
-        "reactiveEnergyBalanceL3": {ADDR: 0x08F3, RW: "R"},
-        "reactiveEnergyZone1System": {ADDR: 0xA100, RW: "R"},
-        "reactiveEnergyZone1L1": {ADDR: 0xA101, RW: "R"},
-        "reactiveEnergyZone1L2": {ADDR: 0xA102, RW: "R"},
-        "reactiveEnergyZone1L3": {ADDR: 0xA103, RW: "R"},
-        "reactiveEnergyZone1SystemT1": {ADDR: 0xA110, RW: "R"},
-        "reactiveEnergyZone1L1T1": {ADDR: 0xA111, RW: "R"},
-        "reactiveEnergyZone1L2T1": {ADDR: 0xA112, RW: "R"},
-        "reactiveEnergyZone1L3T1": {ADDR: 0xA113, RW: "R"},
-        "reactiveEnergyZone1SystemT2": {ADDR: 0xA120, RW: "R"},
-        "reactiveEnergyZone1L1T2": {ADDR: 0xA121, RW: "R"},
-        "reactiveEnergyZone1L2T2": {ADDR: 0xA122, RW: "R"},
-        "reactiveEnergyZone1L3T2": {ADDR: 0xA123, RW: "R"},
-        "reactiveEnergyZone2System": {ADDR: 0xA200, RW: "R"},
-        "reactiveEnergyZone2L1": {ADDR: 0xA201, RW: "R"},
-        "reactiveEnergyZone2L2": {ADDR: 0xA202, RW: "R"},
-        "reactiveEnergyZone2L3": {ADDR: 0xA203, RW: "R"},
-        "reactiveEnergyZone2SystemT1": {ADDR: 0xA210, RW: "R"},
-        "reactiveEnergyZone2L1T1": {ADDR: 0xA211, RW: "R"},
-        "reactiveEnergyZone2L2T1": {ADDR: 0xA212, RW: "R"},
-        "reactiveEnergyZone2L3T1": {ADDR: 0xA213, RW: "R"},
-        "reactiveEnergyZone2SystemT2": {ADDR: 0xA220, RW: "R"},
-        "reactiveEnergyZone2L1T2": {ADDR: 0xA221, RW: "R"},
-        "reactiveEnergyZone2L2T2": {ADDR: 0xA222, RW: "R"},
-        "reactiveEnergyZone2L3T2": {ADDR: 0xA223, RW: "R"},
-        "reactiveEnergyZone3System": {ADDR: 0xA300, RW: "R"},
-        "reactiveEnergyZone3L1": {ADDR: 0xA301, RW: "R"},
-        "reactiveEnergyZone3L2": {ADDR: 0xA302, RW: "R"},
-        "reactiveEnergyZone3L3": {ADDR: 0xA303, RW: "R"},
-        "reactiveEnergyZone3SystemT1": {ADDR: 0xA310, RW: "R"},
-        "reactiveEnergyZone3L1T1": {ADDR: 0xA311, RW: "R"},
-        "reactiveEnergyZone3L2T1": {ADDR: 0xA312, RW: "R"},
-        "reactiveEnergyZone3L3T1": {ADDR: 0xA313, RW: "R"},
-        "reactiveEnergyZone3SystemT2": {ADDR: 0xA320, RW: "R"},
-        "reactiveEnergyZone3L1T2": {ADDR: 0xA321, RW: "R"},
-        "reactiveEnergyZone3L2T2": {ADDR: 0xA322, RW: "R"},
-        "reactiveEnergyZone3L3T2": {ADDR: 0xA323, RW: "R"},
-        "reactiveEnergyZone4System": {ADDR: 0xA400, RW: "R"},
-        "reactiveEnergyZone4L1": {ADDR: 0xA401, RW: "R"},
-        "reactiveEnergyZone4L2": {ADDR: 0xA402, RW: "R"},
-        "reactiveEnergyZone4L3": {ADDR: 0xA403, RW: "R"},
-        "reactiveEnergyZone4SystemT1": {ADDR: 0xA410, RW: "R"},
-        "reactiveEnergyZone4L1T1": {ADDR: 0xA411, RW: "R"},
-        "reactiveEnergyZone4L2T1": {ADDR: 0xA412, RW: "R"},
-        "reactiveEnergyZone4L3T1": {ADDR: 0xA413, RW: "R"},
-        "reactiveEnergyZone4SystemT2": {ADDR: 0xA420, RW: "R"},
-        "reactiveEnergyZone4L1T2": {ADDR: 0xA421, RW: "R"},
-        "reactiveEnergyZone4L2T2": {ADDR: 0xA422, RW: "R"},
-        "reactiveEnergyZone4L3T2": {ADDR: 0xA423, RW: "R"},
-        "digitalInputFlags": {ADDR: 0x2100, RW: "R"},
-        "digitalInput1Counter": {ADDR: 0x2110, RW: "R"},
-        "digitalInput1OnTime": {ADDR: 0x2111, RW: "R"},
-        "digitalInput2Counter": {ADDR: 0x2120, RW: "R"},
-        "digitalInput2OnTime": {ADDR: 0x2121, RW: "R"},
-        "diagnosticAlarms": {ADDR: 0xEEA0, RW: "R"},
-        "diagnosticErrorFlags": {ADDR: 0xEEE0, RW: "R"},
-
-    },
-    ERRORS : {
-        CMD_INVALID: "Invalid command",
-        CMD_REGISTER_NOT_FOUND: "Register not found in the device registers",
-        CMD_REGISTER_NOT_WRITABLE: "Register not writable",
-        CMD_REGISTER_NOT_READABLE: "Register not readable",
-        CMD_REGISTER_NUMBER_INVALID: "Invalid number of registers",
-        CMD_DATA_INVALID: "Invalid data in the command",
-        CMD_FPORT_INVALID: "Invalid fPort in the command"
-    },
-    WARNING_NAME   : "warning",
-    ERROR_NAME     : "error",
-    INFO_NAME      : "info"
-};
-
-/************************************************************************************************************/
-
-// Encode encodes the given object into an array of bytes. (ChirpStack v3)
-//  - fPort contains the LoRaWAN fPort number
-//  - obj is an object, e.g. {"temperature": 22.5}
-//  - variables contains the device variables e.g. {"calibration": "3.5"} (both the key / value are of type string)
-// The function must return an array of bytes, e.g. [225, 230, 255, 0]
-function Encode(fPort, obj, variables) {
-    if(!(DEVICE.DOWNLINK.TYPE in obj)){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID + 
-            ": please add " + DEVICE.DOWNLINK.TYPE + " to the command";
-        return []; // error
-    }
-    if(obj[DEVICE.DOWNLINK.TYPE] == DEVICE.DOWNLINK.CONFIG){
-        if(fPort != DEVICE.CONFIG.FPORT){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_FPORT_INVALID;
-            return []; // error
-        }
-        return encodeDeviceConfiguration(obj[DEVICE.DOWNLINK.CONFIG]);
-    }else if(obj[DEVICE.DOWNLINK.TYPE] == DEVICE.DOWNLINK.PERIODIC){
-        if(fPort < DEVICE.PERIODIC.FPORT_MIN || fPort > DEVICE.PERIODIC.FPORT_MAX){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_FPORT_INVALID;
-            return []; // error
-        }
-        return encodeUplinkConfiguration(obj[DEVICE.DOWNLINK.PERIODIC]);
-    }else if(obj[DEVICE.DOWNLINK.TYPE] == DEVICE.DOWNLINK.READING){
-        if(fPort != DEVICE.READING.FPORT){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_FPORT_INVALID;
-            return []; // error
-        }
-        return encodeParameterReading(obj[DEVICE.DOWNLINK.READING]);
-    }
-    DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID + 
-        ": please check " + obj[DEVICE.DOWNLINK.TYPE] + " in the command";
-    return []; // error
-}
-
-// Encode downlink function. (ChirpStack v4 , TTN, TTI, LORIOT, ThingPark)
-//
-// Input is an object with the following fields:
-// - data = Object representing the payload that must be encoded.
-// - variables = Object containing the configured device variables.
-//
-// Output must be an object with the following fields:
-// - bytes = Byte array containing the downlink payload.
+// input = {data: {fPort: n, Type: "...", ...}, variables: {..}}; without fPort, the command Type chooses it.
 function encodeDownlink(input) {
-    var fPort = DEVICE.CONFIG.FPORT; // by default use config fPort (50)
-    if(input.data.fPort)
-    {
-        fPort = input.data.fPort;
+    var command = input.data;
+    var fPort = FPORT.GENERIC;
+    if (command && command.fPort) {
+        fPort = command.fPort;
+    } else if (command && typeof command.Type === "string" && has(COMMAND_FPORTS, command.Type)) {
+        fPort = COMMAND_FPORTS[command.Type];
     }
-    var errors = [];
-    var warnings = [];
-    var encoded = Encode(fPort, input.data, input.variables);
-    if(DEVICE.ERROR_NAME in DEVICE)
-    {
-        errors.push(DEVICE[DEVICE.ERROR_NAME]);
-    }
-    if(DEVICE.WARNING_NAME in DEVICE)
-    {
-        warnings.push(DEVICE[DEVICE.WARNING_NAME]);
-    }
-    return {
-        bytes: encoded,
-        fPort: fPort,
-        errors: errors,
-        warnings : warnings
-    };
+    return encodeCommand(fPort, command);
 }
 
-
-/************************************************************************************************************/
-
-
-function encodeDeviceConfiguration(cmdArray)
-{
-    var encoded = [];
-
-    if(!(cmdArray)){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID + 
-            ": please add " + DEVICE.DOWNLINK.CONFIG + " array to the command";
-        return []; // error
-    }
-    if(cmdArray.length < DEVICE.CONFIG.REG_MIN_NUMBER ||
-        cmdArray.length > DEVICE.CONFIG.REG_MAX_NUMBER){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NUMBER_INVALID + 
-            ": please check " + DEVICE.DOWNLINK.CONFIG + " in the command";
-        return [];
-    }
-    
-    for(var i=0; i<cmdArray.length; i=i+1)
-    {
-        var cmdObj = cmdArray[i];
-        if(!("Param" in cmdObj) || !("Value" in cmdObj)){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID + 
-            ": please add Param and Value to each object in the " + 
-            DEVICE.DOWNLINK.CONFIG + " array of the command";
-            return []; // error
-        }
-        var regName = cmdObj.Param;
-        if(!(regName in DEVICE.REGISTERS)){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NOT_FOUND + 
-                ": please check " + regName + " in the command";
-            return []; // error
-        }
-        var reg = DEVICE.REGISTERS[regName];
-        if(reg.RW == "R"){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NOT_WRITABLE +
-                ": please check " + regName + " in the command";
-            return [];  // error
-        }
-        if(cmdObj.Value < reg.MIN || cmdObj.Value > reg.MAX){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_DATA_INVALID +
-                ": please check " + regName + " in the command";
-            return []; // error
-        }
-      
-        // ADDR
-        encoded.push((reg.ADDR >> 8) & 0xFF);
-        encoded.push(reg.ADDR & 0xFF);
- 
-        if(reg.SIZE == 0){
-            if(typeof cmdObj.Value == "string"){
-                // length of the string
-                encoded.push(cmdObj.Value.length);
-                // string
-                for(var j=0; j<cmdObj.Value.length; j=j+1){
-                    encoded.push(cmdObj.Value.charCodeAt(j));
-                }
-            }
-        } else if(reg.SIZE == 4){
-            encoded.push((cmdObj.Value >> 24) & 0xFF);
-            encoded.push((cmdObj.Value >> 16) & 0xFF);
-            encoded.push((cmdObj.Value >> 8) & 0xFF);
-            encoded.push(cmdObj.Value & 0xFF);
-        }else if(reg.SIZE == 2){
-            encoded.push((cmdObj.Value >> 8) & 0xFF);
-            encoded.push(cmdObj.Value & 0xFF);
-        }else if(reg.SIZE == 1){
-            encoded.push(cmdObj.Value);
-        } else {
-            
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_DATA_INVALID +
-                ": please check " + regName + " in the command";
-            return []; // error
-        }
-    }
-    return encoded;
+// ChirpStack v3 (otto): returns the decoded object.
+function Decode(fPort, bytes, variables) {
+    return decodePayload(fPort, bytes).data;
 }
 
-function encodeUplinkConfiguration(cmdObj)
-{
-    var encoded = [];
-
-    if(!(cmdObj)){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID + 
-            ": please add " + DEVICE.DOWNLINK.PERIODIC + " object to the command";
-        return []; // error
-    }
-    if(!("UplinkInterval" in cmdObj) ||  !("Mode" in cmdObj) ||
-        !("Status" in cmdObj) || !("Registers" in cmdObj)){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID;
-        return []; // error
-    }
-    // Encode UplinkInterval, Mode, Status
-    if(cmdObj.UplinkInterval < 0 || cmdObj.UplinkInterval > 0xFFFF){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_DATA_INVALID +
-        ": please check UplinkInterval in the command";
-        return []; // error
-    }
-    encoded.push(DEVICE.PERIODIC.CHANNEL);
-    encoded.push(DEVICE.PERIODIC.INTERVAL_TYPE);
-    encoded.push((cmdObj.UplinkInterval >> 8) & 0xFF);
-    encoded.push(cmdObj.UplinkInterval & 0xFF);
-
-    if(cmdObj.Mode < 0 || cmdObj.Mode > 1){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_DATA_INVALID +
-            ": please check Mode in the command";
-        return []; // error
-    }
-    encoded.push(DEVICE.PERIODIC.CHANNEL);
-    encoded.push(DEVICE.PERIODIC.MODE_TYPE);
-    encoded.push(cmdObj.Mode);
-    
-    if(cmdObj.Status < 0 || cmdObj.Status > 1){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_DATA_INVALID +
-            ": please check Status in the command";
-        return []; // error
-    }
-    encoded.push(DEVICE.PERIODIC.CHANNEL);
-    encoded.push(DEVICE.PERIODIC.STATUS_TYPE);
-    encoded.push(cmdObj.Status);
-    // Encode registers
-    if(cmdObj.Registers.length < DEVICE.PERIODIC.REG_MIN_NUMBER || 
-        cmdObj.Registers.length > DEVICE.PERIODIC.REG_MAX_NUMBER){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NUMBER_INVALID +
-            ": please check Registers in the command";
-        return [];  // Error
-    }
-    encoded.push(DEVICE.PERIODIC.CHANNEL);
-    encoded.push(DEVICE.PERIODIC.REGISTERS_TYPE);
-    // data length (2 bytes per ADDR)
-    encoded.push(cmdObj.Registers.length * 2);
-    for(var i=0; i<cmdObj.Registers.length; i=i+1)
-    {
-        var regName = cmdObj.Registers[i];
-        if(!(regName in DEVICE.REGISTERS)){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NOT_FOUND + 
-                ": please check " + regName + " in the command";
-            return []; // error (registers not supported)
-        }
-        var reg = DEVICE.REGISTERS[regName];
-        if(reg.RW == "W"){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NOT_READABLE +
-                ": please check " + regName + " in the command";
-            return [];  // error
-        }
-        // ADDR
-        encoded.push((reg.ADDR >> 8) & 0xFF);
-        encoded.push(reg.ADDR & 0xFF);
-    }
-    return encoded;
+// ChirpStack v3 (otto): fPort is the downlink queue item's fPort; returns the byte array.
+function Encode(fPort, obj, variables) {
+    return encodeCommand(fPort, obj).bytes;
 }
-
-function encodeParameterReading(cmdArray)
-{
-    var encoded = [];
-
-    if(!(cmdArray)){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_INVALID + 
-            ": please add " + DEVICE.DOWNLINK.READING + " array to the command";
-        return []; // error
-    }
-    if(cmdArray.length < DEVICE.READING.REG_MIN_NUMBER ||
-        cmdArray.length > DEVICE.READING.REG_MAX_NUMBER){
-        DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NUMBER_INVALID +
-            ": please check " + DEVICE.DOWNLINK.READING + " in the command";
-        return []; // error
-    }
-    encoded.push(DEVICE.READING.CHANNEL);
-    encoded.push(DEVICE.READING.TYPE);
-    for(var i=0; i<cmdArray.length; i=i+1)
-    {
-        var regName = cmdArray[i];
-        if(!(regName in DEVICE.REGISTERS)){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NOT_FOUND +
-                ": please check " + regName + " in the command";
-            return []; // error
-        }
-        var reg = DEVICE.REGISTERS[regName];
-        if(reg.RW == "W"){
-            DEVICE[DEVICE.ERROR_NAME] = DEVICE.ERRORS.CMD_REGISTER_NOT_READABLE +
-                ": please check " + regName + " in the command";
-            return [];  // error
-        }
-        // ADDR
-        encoded.push((reg.ADDR >> 8) & 0xFF);
-        encoded.push(reg.ADDR & 0xFF);
-    }
-    return encoded;
-}
-
