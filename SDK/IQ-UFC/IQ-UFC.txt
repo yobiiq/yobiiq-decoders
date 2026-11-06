@@ -1,0 +1,322 @@
+1. Set the system to heating, with a heating setpoint of 21.5 °C (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "systemOperatingMode",
+            "Value": "HEATING"
+        },
+        {
+            "Param": "heatingSetpoint",
+            "Value": 21.5
+        }
+    ]
+}
+
+- Enum values are given as a number (1) or as the label shown in uplinks ("HEATING").
+- Temperatures and setpoints in °C, with up to two decimals.
+- The whole downlink is one session: when one value is refused, nothing is saved and the answer is 01.
+- At most 51 bytes once encoded.
+- Settings are saved to the internal flash memory: writing different values often shortens its
+  lifespan, writing the same values again does not write the flash.
+
+
+2. Setpoint and temperature of GR3, an Internal group (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "group3Setpoint",
+            "Value": 20
+        },
+        {
+            "Param": "group3Temperature",
+            "Value": 24
+        }
+    ]
+}
+
+- A group setpoint or temperature is taken by a group of thermostat type INTERNAL only, or, for the
+  setpoint, by an OpenTherm group (TH1 or TH2) with group<n>SetpointOverride ENABLED. Any other group
+  refuses it, which fails the whole downlink.
+- Write group<n>ThermostatType or group<n>SetpointOverride first in the same downlink when they change.
+- Group setpoints and temperatures are kept in RAM only, not in the flash memory: they can be sent
+  as often as needed.
+
+
+3. Room temperature and setpoint of the Internal thermostat, for every Internal group without its own (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "internalRoomTemperature",
+            "Value": 24
+        },
+        {
+            "Param": "internalRoomSetpoint",
+            "Value": 20
+        }
+    ]
+}
+
+
+4. Group GR1: name, comfort mode, output forced on, deadband 0.5 °C (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "group1Name",
+            "Value": "Bathroom"
+        },
+        {
+            "Param": "group1OperatingMode",
+            "Value": "COMFORT"
+        },
+        {
+            "Param": "group1OverrideOutput",
+            "Value": "ON"
+        },
+        {
+            "Param": "group1Deadband",
+            "Value": 0.5
+        }
+    ]
+}
+
+- Names are ASCII, 1 to 31 characters.
+- group<n>OverrideOutput: AUTO, ON or OFF. ON and OFF stay through a reboot, until AUTO is written.
+- group<n>Deadband: 0 to 3 °C, in steps of 0.1 °C.
+
+
+5. Output CH1: normally open motor, open time 120 s, in group GR1 (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "channel1MotorType",
+            "Value": "NO"
+        },
+        {
+            "Param": "channel1OpenTime",
+            "Value": 120
+        },
+        {
+            "Param": "channel1RelatedGroupId",
+            "Value": 0
+        }
+    ]
+}
+
+- channel<n>RelatedGroupId counts from 0: 0 is GR1, 11 is GR12.
+- channel<n>OpenTime in seconds; below 60 s the device saves 60 s.
+
+
+6. Static IP address (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "enableDhcp",
+            "Value": "DISABLED"
+        },
+        {
+            "Param": "deviceIpAddress",
+            "Value": "192.168.1.100"
+        },
+        {
+            "Param": "gatewayIpAddress",
+            "Value": "192.168.1.1"
+        },
+        {
+            "Param": "subnetMask",
+            "Value": "255.255.255.0"
+        }
+    ]
+}
+
+
+7. Read the system settings and the state of CH1 (fPort 100)
+
+{
+    "fPort": 100,
+    "Type": "Reading",
+    "Reading": [
+        "systemOperatingMode",
+        "heatingSetpoint",
+        "coolingSetpoint",
+        "channel1OutputState",
+        "channel1OutputPower",
+        "group1Regulating"
+    ]
+}
+
+- At most 10 registers per Reading. Registers marked (W) below cannot be read.
+- The answer is 00 on fPort 100, then the uplinks with the registers read.
+
+
+8. Configure a 15 min periodic unconfirmed uplink on fPort 3
+
+{
+    "fPort": 3,
+    "Type": "Periodic",
+    "Periodic": {
+        "UplinkInterval": 15,
+        "Mode": 0,
+        "Status": 1,
+        "Registers": [
+            "heatingSetpoint",
+            "channel1OutputPower",
+            "internalCircuitHumidity"
+        ]
+    }
+}
+
+- UplinkInterval: minutes, 1 or more. The uplinks go out on the boundaries of the interval in UTC
+  (:00, :15, :30 and :45), once the device has the network time.
+- Mode: 0 unconfirmed, 1 confirmed. Status: 0 inactive, 1 active.
+- Registers: 1 to 10 readable registers. Any field can be left out to keep its stored value.
+
+
+9. Stop the periodic uplink of fPort 3
+
+{
+    "fPort": 3,
+    "Type": "Periodic",
+    "Periodic": {
+        "Status": 0
+    }
+}
+
+
+10. Restart the device (fPort 50)
+
+{
+    "fPort": 50,
+    "Type": "Config",
+    "Config": [
+        {
+            "Param": "rebootDevice",
+            "Value": 1
+        }
+    ]
+}
+
+- restartLoRaWAN (1) leaves the network, applies the stored keys and joins again, without a reboot.
+
+
+Registers
+
+(R) read only, (W) write only, (RW) read and write. n is 1 to 12.
+Written values are saved to the internal flash memory, except group<n>Setpoint, group<n>Temperature
+and the Thermostats block, which are kept in RAM only.
+
+System
+    systemOperatingMode (RW)            OFF, HEATING, COOLING, MANUAL_OPEN, MANUAL_CLOSE
+    heatingSetpoint (RW)                °C
+    heatingSetpointMax (RW)             °C
+    coolingSetpoint (RW)                °C
+    coolingSetpointMin (RW)             °C
+    flowTemperatureMin (RW)             °C
+    flowTemperatureMax (RW)             °C
+
+Outputs CH1 to CH12
+    channel<n>OutputState (R)           CLOSED, OPEN
+    channel<n>OutputCurrent (R)         mA
+    channel<n>OutputVoltage (R)         mV
+    channel<n>OutputPower (R)           mW
+    channel<n>OutputAlarms (R)          overcurrent, outputAlarm: NORMAL or ALARM
+    channel<n>OutputStateSetting (RW)   AUTO, ON, OFF, PRIMARY_HEATER, PRIMARY_COOLER, PRIMARY_HEATER_COOLER
+    channel<n>RelatedGroupId (RW)       0 to 11 (GR1 to GR12)
+    channel<n>Heating (RW)              DISABLED, ENABLED
+    channel<n>Cooling (RW)              DISABLED, ENABLED
+    channel<n>OutputName (RW)           1 to 31 characters
+    channel<n>MotorType (RW)            NC, NO
+    channel<n>OpenTime (RW)             s
+    channel<n>PeakCurrent (RW)          mA
+    channel<n>MinimumCurrent (RW)       mA
+    channel<n>EnablePeriodicCheck (RW)  DISABLED, ENABLED
+    channel<n>EnableCurrentDraw (RW)    DISABLED, ENABLED
+
+Groups GR1 to GR12
+    group<n>ThermostatType (RW)         NONE, TH1, TH2, IQ_D2D, INTERNAL
+    group<n>OperatingMode (RW)          OFF, STANDBY, COMFORT
+    group<n>Setpoint (RW)               °C
+    group<n>Name (RW)                   1 to 31 characters
+    group<n>Temperature (RW)            °C
+    group<n>OverrideOutput (RW)         AUTO, ON, OFF
+    group<n>OutputControl (RW)          OPEN_CLOSE, PWM
+    group<n>Deadband (RW)               0 to 3 °C
+    group<n>SetpointOverride (RW)       DISABLED, ENABLED
+    group<n>ThermostatTimeout (RW)      minutes, 0 none; INTERNAL groups only
+    group<n>IqD2dSerialNumber (RW)      number
+    group<n>Regulating (R)              OFF, ON
+    group<n>Alarm (R)                   NORMAL, ALARM
+
+Main power input
+    mainCurrent (R)                     mA
+    mainVoltage (R)                     mV
+    mainPower (R)                       mW
+
+Thermostats
+    th1RoomTemperature (R)              °C
+    th1RoomSetpoint (R)                 °C
+    th2RoomTemperature (R)              °C
+    th2RoomSetpoint (R)                 °C
+    internalRoomTemperature (RW)        °C
+    internalRoomSetpoint (RW)           °C
+    outdoorTemperature (RW)             °C
+    flowTemperature (RW)                °C
+
+Network
+    enableModbus (RW)                   DISABLED, ENABLED
+    enableDhcp (RW)                     DISABLED, ENABLED
+    enableBacnet (RW)                   DISABLED, ENABLED
+    enableLorawan (RW)                  DISABLED, ENABLED; DISABLED leaves the network
+    deviceIpAddress (RW)                "a.b.c.d"
+    gatewayIpAddress (RW)               "a.b.c.d"
+    subnetMask (RW)                     "a.b.c.d"
+    dnsServerIpAddress (RW)             "a.b.c.d"
+    modbusProtocolMode (RW)             TCP, RTU_OVER_TCP, ASCII_OVER_TCP; only TCP is applied
+
+Generic
+    buildingName (RW)                   0 to 31 characters
+    buildingRoom (RW)                   0 to 31 characters
+    deviceName (RW)                     1 to 31 characters
+    deviceStatus (R)                    NORMAL_MODE
+    manufacturer (R)
+    originalEquipmentManufacturer (R)   YOBIIQ
+    deviceModel (R)                     UFC-1002029
+    deviceSerialNumber (R)
+    firmwareVersion (R)                 "v1.3"
+    hardwareVersion (R)                 "v1.0"
+    externalPowerStatus (R)             MAINS_POWER
+    batteryVoltage (R)                  0, mains powered
+    rebootDevice (W)                    1
+    internalCircuitTemperatureAlarm (R) NORMAL, ALARM
+    internalCircuitTemperatureNumberOfAlarms (R)
+    internalCircuitTemperature (R)      °C
+    internalCircuitHumidity (R)         %
+    restartLoRaWAN (W)                  1
+    joinStatus (R)                      OFFLINE, ONLINE
+    radioModule (R)                     SX126X
+    lorawanRegion (R)                   EU868
+    lorawanVersion (R)                  "v1.0.4"
+    applicationPort (R)                 50
+    joinType (R)                        OTAA
+    deviceClass (RW)                    CLASS_C only
+    adr (RW)                            DISABLED, ENABLED
+    radioMode (RW)                      LORAWAN, IQ_D2D, LORAWAN_AND_IQ_D2D; stored only
+    dataRetransmission (RW)             DISABLED, ENABLED; stored only
+    lorawanWatchdogAlarm (R)            NORMAL, ALARM

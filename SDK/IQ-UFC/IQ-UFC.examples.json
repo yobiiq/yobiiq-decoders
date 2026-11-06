@@ -1,0 +1,1300 @@
+{
+    "codec": "IQ-UFC.js",
+    "codecVersion": "1.3.0",
+    "uplinkCommon": {
+        "codecVersion": "1.3.0",
+        "genericModel": "IQ UFC",
+        "productCode": "P1002029",
+        "manufacturer": "YOBIIQ B.V."
+    },
+    "uplinks": [
+        {
+            "name": "join uplink (fPort 50)",
+            "fPort": 50,
+            "payload": "FF6A 0100 FF69 0103 FF68 0F4F2590 FF9F 02 FF6B 01 FF6C 00 FF67 0B5546432D31303032303239",
+            "payloadHex": "FF6A0100FF690103FF680F4F2590FF9F02FF6B01FF6C00FF670B5546432D31303032303239",
+            "expected": {
+                "data": {
+                    "hardwareVersion": "v1.0",
+                    "firmwareVersion": "v1.3",
+                    "deviceSerialNumber": 256845200,
+                    "deviceClass": "CLASS_C",
+                    "externalPowerStatus": "MAINS_POWER",
+                    "batteryVoltage": 0,
+                    "deviceModel": "UFC-1002029",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "periodic: heating setpoint, CH1 power, humidity (fPort 3)",
+            "fPort": 3,
+            "payload": "FF01 6955B900 0001 0FA0 0103 00011170 FF7B 2E",
+            "payloadHex": "FF016955B90000010FA0010300011170FF7B2E",
+            "expected": {
+                "data": {
+                    "dataloggerTimestamp": 1767225600,
+                    "heatingSetpoint": 40,
+                    "channel1OutputPower": 70000,
+                    "internalCircuitHumidity": 46,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: system settings",
+            "fPort": 100,
+            "payload": "0000 01 0001 0866 0002 1388 0003 0708 0004 0640 0005 01F4 0006 0FA0",
+            "payloadHex": "00000100010866000213880003070800040640000501F400060FA0",
+            "expected": {
+                "data": {
+                    "systemOperatingMode": "HEATING",
+                    "heatingSetpoint": 21.5,
+                    "heatingSetpointMax": 50,
+                    "coolingSetpoint": 18,
+                    "coolingSetpointMin": 16,
+                    "flowTemperatureMin": 5,
+                    "flowTemperatureMax": 40,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: CH1 measurements",
+            "fPort": 100,
+            "payload": "0100 01 0101 00C8 0102 5DC0 0103 00001770 0104 0100",
+            "payloadHex": "010001010100C801025DC001030000177001040100",
+            "expected": {
+                "data": {
+                    "channel1OutputState": "OPEN",
+                    "channel1OutputCurrent": 200,
+                    "channel1OutputVoltage": 24000,
+                    "channel1OutputPower": 6000,
+                    "channel1OutputAlarms": {
+                        "overcurrent": "ALARM",
+                        "outputAlarm": "NORMAL"
+                    },
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: CH1 settings",
+            "fPort": 100,
+            "payload": "0110 00 0111 00 0112 01 0113 00 0115 01 0116 0078 0117 012C 0118 0032 0119 01 011A 01",
+            "payloadHex": "011000011100011201011300011501011600780117012C01180032011901011A01",
+            "expected": {
+                "data": {
+                    "channel1OutputStateSetting": "AUTO",
+                    "channel1RelatedGroupId": 0,
+                    "channel1Heating": "ENABLED",
+                    "channel1Cooling": "DISABLED",
+                    "channel1MotorType": "NO",
+                    "channel1OpenTime": 120,
+                    "channel1PeakCurrent": 300,
+                    "channel1MinimumCurrent": 50,
+                    "channel1EnablePeriodicCheck": "ENABLED",
+                    "channel1EnableCurrentDraw": "ENABLED",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: CH12 name",
+            "fPort": 100,
+            "payload": "0C14 04 4D61696E",
+            "payloadHex": "0C14044D61696E",
+            "expected": {
+                "data": {
+                    "channel12OutputName": "Main",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: CH1 output alarm only",
+            "fPort": 100,
+            "payload": "0104 0001",
+            "payloadHex": "01040001",
+            "expected": {
+                "data": {
+                    "channel1OutputAlarms": {
+                        "overcurrent": "NORMAL",
+                        "outputAlarm": "ALARM"
+                    },
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: GR1 settings",
+            "fPort": 100,
+            "payload": "1100 04 1101 02 1102 07D0 1104 0960 1105 00 1106 00 1107 03 1108 00 1109 3C",
+            "payloadHex": "110004110102110207D01104096011050011060011070311080011093C",
+            "expected": {
+                "data": {
+                    "group1ThermostatType": "INTERNAL",
+                    "group1OperatingMode": "COMFORT",
+                    "group1Setpoint": 20,
+                    "group1Temperature": 24,
+                    "group1OverrideOutput": "AUTO",
+                    "group1OutputControl": "OPEN_CLOSE",
+                    "group1Deadband": 0.3,
+                    "group1SetpointOverride": "DISABLED",
+                    "group1ThermostatTimeout": 60,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: GR1 name, iQ D2D serial, regulating, alarm",
+            "fPort": 100,
+            "payload": "1103 08 42617468726F6F6D 110A 12345678 110B 01 110C 00",
+            "payloadHex": "11030842617468726F6F6D110A12345678110B01110C00",
+            "expected": {
+                "data": {
+                    "group1Name": "Bathroom",
+                    "group1IqD2dSerialNumber": 305419896,
+                    "group1Regulating": "ON",
+                    "group1Alarm": "NORMAL",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: GR12 thermostat type",
+            "fPort": 100,
+            "payload": "1C00 01",
+            "payloadHex": "1C0001",
+            "expected": {
+                "data": {
+                    "group12ThermostatType": "TH1",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: main power",
+            "fPort": 100,
+            "payload": "2001 03E8 2002 5DC0 2003 00005DC0",
+            "payloadHex": "200103E820025DC0200300005DC0",
+            "expected": {
+                "data": {
+                    "mainCurrent": 1000,
+                    "mainVoltage": 24000,
+                    "mainPower": 24000,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: thermostats",
+            "fPort": 100,
+            "payload": "3100 0866 3101 07D0 3200 0834 3201 0898 3400 0960 3401 07D0 3402 FDF3 3403 0BB8",
+            "payloadHex": "31000866310107D0320008343201089834000960340107D03402FDF334030BB8",
+            "expected": {
+                "data": {
+                    "th1RoomTemperature": 21.5,
+                    "th1RoomSetpoint": 20,
+                    "th2RoomTemperature": 21,
+                    "th2RoomSetpoint": 22,
+                    "internalRoomTemperature": 24,
+                    "internalRoomSetpoint": 20,
+                    "outdoorTemperature": -5.25,
+                    "flowTemperature": 30,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: network settings",
+            "fPort": 100,
+            "payload": "4000 01 4001 00 4002 00 4003 01 4004 C0A80164 4005 C0A80101 4006 FFFFFF00 4007 08080808 4008 00",
+            "payloadHex": "4000014001004002004003014004C0A801644005C0A801014006FFFFFF00400708080808400800",
+            "expected": {
+                "data": {
+                    "enableModbus": "ENABLED",
+                    "enableDhcp": "DISABLED",
+                    "enableBacnet": "DISABLED",
+                    "enableLorawan": "ENABLED",
+                    "deviceIpAddress": "192.168.1.100",
+                    "gatewayIpAddress": "192.168.1.1",
+                    "subnetMask": "255.255.255.0",
+                    "dnsServerIpAddress": "8.8.8.8",
+                    "modbusProtocolMode": "TCP",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: device information",
+            "fPort": 100,
+            "payload": "FF65 0B594F4249495120422E562E FF66 06594F42494951 FF64 00 FF97 06535831323658 FF98 01 FF99 010004",
+            "payloadHex": "FF650B594F4249495120422E562EFF6606594F42494951FF6400FF9706535831323658FF9801FF99010004",
+            "expected": {
+                "data": {
+                    "manufacturer": "YOBIIQ B.V.",
+                    "originalEquipmentManufacturer": "YOBIIQ",
+                    "deviceStatus": "NORMAL_MODE",
+                    "radioModule": "SX126X",
+                    "lorawanRegion": "EU868",
+                    "lorawanVersion": "v1.0.4"
+                }
+            }
+        },
+        {
+            "name": "read response: LoRaWAN settings",
+            "fPort": 100,
+            "payload": "FF96 01 FF9D 32 FF9E 01 FF9F 02 FFA0 01 FFA3 00 FFA6 00 FFA7 00",
+            "payloadHex": "FF9601FF9D32FF9E01FF9F02FFA001FFA300FFA600FFA700",
+            "expected": {
+                "data": {
+                    "joinStatus": "ONLINE",
+                    "applicationPort": 50,
+                    "joinType": "OTAA",
+                    "deviceClass": "CLASS_C",
+                    "adr": "ENABLED",
+                    "radioMode": "LORAWAN",
+                    "dataRetransmission": "DISABLED",
+                    "lorawanWatchdogAlarm": "NORMAL",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: building and device names, empty room",
+            "fPort": 100,
+            "payload": "FF32 04 48514E4C FF33 00 FF34 0B5546432D31303032303239",
+            "payloadHex": "FF320448514E4CFF3300FF340B5546432D31303032303239",
+            "expected": {
+                "data": {
+                    "buildingName": "HQNL",
+                    "buildingRoom": "",
+                    "deviceName": "UFC-1002029",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: internal sensor",
+            "fPort": 100,
+            "payload": "FF78 00 FF79 00000000 FF7A FDF3 FF7B 2E",
+            "payloadHex": "FF7800FF7900000000FF7AFDF3FF7B2E",
+            "expected": {
+                "data": {
+                    "internalCircuitTemperatureAlarm": "NORMAL",
+                    "internalCircuitTemperatureNumberOfAlarms": 0,
+                    "internalCircuitTemperature": -5.25,
+                    "internalCircuitHumidity": 46,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: join status",
+            "fPort": 100,
+            "payload": "FF96 01",
+            "payloadHex": "FF9601",
+            "expected": {
+                "data": {
+                    "joinStatus": "ONLINE",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "read response: unknown enum value is labelled",
+            "fPort": 100,
+            "payload": "0000 07",
+            "payloadHex": "000007",
+            "expected": {
+                "data": {
+                    "systemOperatingMode": "UNKNOWN (7)",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "status byte: command succeeded (fPort 50)",
+            "fPort": 50,
+            "payload": "00",
+            "payloadHex": "00",
+            "expected": {
+                "data": {
+                    "info": "DOWNLINK COMMAND SUCCEEDED",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "status byte: command failed (fPort 50)",
+            "fPort": 50,
+            "payload": "01",
+            "payloadHex": "01",
+            "expected": {
+                "data": {
+                    "warning": "DOWNLINK COMMAND FAILED",
+                    "manufacturer": "YOBIIQ B.V."
+                },
+                "warnings": [
+                    "DOWNLINK COMMAND FAILED"
+                ]
+            }
+        },
+        {
+            "name": "status byte: read accepted (fPort 100)",
+            "fPort": 100,
+            "payload": "00",
+            "payloadHex": "00",
+            "expected": {
+                "data": {
+                    "info": "DOWNLINK COMMAND SUCCEEDED",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "status byte: uplink configuration accepted (fPort 3)",
+            "fPort": 3,
+            "payload": "00",
+            "payloadHex": "00",
+            "expected": {
+                "data": {
+                    "info": "DOWNLINK COMMAND SUCCEEDED",
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "MAC commands (fPort 0)",
+            "fPort": 0,
+            "payload": "0603",
+            "payloadHex": "0603",
+            "expected": {
+                "data": {
+                    "mac": "MAC COMMAND RECEIVED",
+                    "fPort": 0,
+                    "manufacturer": "YOBIIQ B.V."
+                }
+            }
+        },
+        {
+            "name": "unknown register stops decoding",
+            "fPort": 100,
+            "payload": "0001 0866 0007 00",
+            "payloadHex": "00010866000700",
+            "expected": {
+                "data": {
+                    "heatingSetpoint": 21.5,
+                    "error": "Unknown register 0x0007 at index 4",
+                    "manufacturer": "YOBIIQ B.V."
+                },
+                "errors": [
+                    "Unknown register 0x0007 at index 4"
+                ]
+            }
+        },
+        {
+            "name": "truncated value is an error",
+            "fPort": 100,
+            "payload": "0103 0001",
+            "payloadHex": "01030001",
+            "expected": {
+                "data": {
+                    "error": "Payload too short for register 0x0103 at index 0",
+                    "manufacturer": "YOBIIQ B.V."
+                },
+                "errors": [
+                    "Payload too short for register 0x0103 at index 0"
+                ]
+            }
+        },
+        {
+            "name": "truncated string is an error",
+            "fPort": 100,
+            "payload": "1103 08 4261",
+            "payloadHex": "1103084261",
+            "expected": {
+                "data": {
+                    "error": "Payload too short for register 0x1103 at index 0",
+                    "manufacturer": "YOBIIQ B.V."
+                },
+                "errors": [
+                    "Payload too short for register 0x1103 at index 0"
+                ]
+            }
+        },
+        {
+            "name": "truncated address is an error",
+            "fPort": 100,
+            "payload": "0001 0866 FF",
+            "payloadHex": "00010866FF",
+            "expected": {
+                "data": {
+                    "heatingSetpoint": 21.5,
+                    "error": "Incomplete register address at index 4",
+                    "manufacturer": "YOBIIQ B.V."
+                },
+                "errors": [
+                    "Incomplete register address at index 4"
+                ]
+            }
+        },
+        {
+            "name": "unsupported fPort",
+            "fPort": 11,
+            "payload": "0001 0866",
+            "payloadHex": "00010866",
+            "expected": {
+                "data": {
+                    "fPort": 11,
+                    "error": "Incorrect fPort",
+                    "manufacturer": "YOBIIQ B.V."
+                },
+                "errors": [
+                    "Incorrect fPort"
+                ]
+            }
+        }
+    ],
+    "downlinks": [
+        {
+            "name": "config: heating mode and setpoint 21.5",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "systemOperatingMode",
+                        "Value": "HEATING"
+                    },
+                    {
+                        "Param": "heatingSetpoint",
+                        "Value": 21.5
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "00000100010866"
+            }
+        },
+        {
+            "name": "config: heating setpoint 40 and GR3 setpoint 20 (README 6.1)",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "heatingSetpoint",
+                        "Value": 40
+                    },
+                    {
+                        "Param": "group3Setpoint",
+                        "Value": 20
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "00010FA0130207D0"
+            }
+        },
+        {
+            "name": "config: GR3 temperature 24",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group3Temperature",
+                        "Value": 24
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "13040960"
+            }
+        },
+        {
+            "name": "config: Internal thermostat temperature and setpoint",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "internalRoomTemperature",
+                        "Value": 24
+                    },
+                    {
+                        "Param": "internalRoomSetpoint",
+                        "Value": 20
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "34000960340107D0"
+            }
+        },
+        {
+            "name": "config: outdoor temperature below zero",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "outdoorTemperature",
+                        "Value": -5.25
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "3402FDF3"
+            }
+        },
+        {
+            "name": "config: GR1 override output ON",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1OverrideOutput",
+                        "Value": "ON"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "110501"
+            }
+        },
+        {
+            "name": "config: GR1 name, comfort mode, deadband 0.5",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1Name",
+                        "Value": "Bathroom"
+                    },
+                    {
+                        "Param": "group1OperatingMode",
+                        "Value": "COMFORT"
+                    },
+                    {
+                        "Param": "group1Deadband",
+                        "Value": 0.5
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "11030842617468726F6F6D110102110705"
+            }
+        },
+        {
+            "name": "config: setpoint override, then the group setpoint",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1SetpointOverride",
+                        "Value": 1
+                    },
+                    {
+                        "Param": "group1Setpoint",
+                        "Value": 21
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "11080111020834"
+            }
+        },
+        {
+            "name": "config: CH1 motor NO, open time 120, group GR1",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "channel1MotorType",
+                        "Value": "NO"
+                    },
+                    {
+                        "Param": "channel1OpenTime",
+                        "Value": 120
+                    },
+                    {
+                        "Param": "channel1RelatedGroupId",
+                        "Value": 0
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "01150101160078011100"
+            }
+        },
+        {
+            "name": "config: CH12 output state setting by number",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "channel12OutputStateSetting",
+                        "Value": 5
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "0C1005"
+            }
+        },
+        {
+            "name": "config: static IP address",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "enableDhcp",
+                        "Value": "DISABLED"
+                    },
+                    {
+                        "Param": "deviceIpAddress",
+                        "Value": "192.168.1.100"
+                    },
+                    {
+                        "Param": "gatewayIpAddress",
+                        "Value": "192.168.1.1"
+                    },
+                    {
+                        "Param": "subnetMask",
+                        "Value": "255.255.255.0"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "4001004004C0A801644005C0A801014006FFFFFF00"
+            }
+        },
+        {
+            "name": "config: GR1 iQ D2D serial number (u32)",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1IqD2dSerialNumber",
+                        "Value": 305419896
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "110A12345678"
+            }
+        },
+        {
+            "name": "config: device class C",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "deviceClass",
+                        "Value": "CLASS_C"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "FF9F02"
+            }
+        },
+        {
+            "name": "config: ADR off",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "adr",
+                        "Value": 0
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "FFA000"
+            }
+        },
+        {
+            "name": "config: empty building room",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "buildingRoom",
+                        "Value": ""
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "FF3300"
+            }
+        },
+        {
+            "name": "config: reboot device",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "rebootDevice",
+                        "Value": 1
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "FF6F01"
+            }
+        },
+        {
+            "name": "config: restart LoRaWAN",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "restartLoRaWAN",
+                        "Value": 1
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "FF9501"
+            }
+        },
+        {
+            "name": "config: default fPort is 50",
+            "input": {
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "enableLorawan",
+                        "Value": "ENABLED"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "400301"
+            }
+        },
+        {
+            "name": "config: device class A rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "deviceClass",
+                        "Value": "CLASS_A"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check deviceClass in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: deadband above 3 rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1Deadband",
+                        "Value": 3.1
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check group1Deadband in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: related group above 11 rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "channel1RelatedGroupId",
+                        "Value": 12
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check channel1RelatedGroupId in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: empty group name rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1Name",
+                        "Value": ""
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check group1Name in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: name longer than 31 characters rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1Name",
+                        "Value": "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check group1Name in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: non ASCII name rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1Name",
+                        "Value": "Salle de bain é"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check group1Name in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: setpoint above the register size rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "heatingSetpoint",
+                        "Value": 700
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check heatingSetpoint in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: bad IP address rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "deviceIpAddress",
+                        "Value": "192.168.1.256"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check deviceIpAddress in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: unknown enum label rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "systemOperatingMode",
+                        "Value": "AUTO"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check systemOperatingMode in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: read-only register rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "channel1OutputState",
+                        "Value": 1
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Register not writable: please check channel1OutputState in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: unknown parameter rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "devEui",
+                        "Value": 1
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Register not found in the device registers: please check devEui in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: Param without Value rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "heatingSetpoint"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid command: please add Param and Value to each object in the Config array"
+                ]
+            }
+        },
+        {
+            "name": "config: Config must be an array",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": {
+                    "Param": "heatingSetpoint",
+                    "Value": 20
+                }
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid number of registers: please check Config in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: wrong fPort rejected",
+            "input": {
+                "fPort": 100,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "heatingSetpoint",
+                        "Value": 20
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 100,
+                "bytes": "",
+                "errors": [
+                    "Invalid fPort in the command"
+                ]
+            }
+        },
+        {
+            "name": "config: command over 51 bytes rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Config",
+                "Config": [
+                    {
+                        "Param": "group1Name",
+                        "Value": "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234"
+                    },
+                    {
+                        "Param": "group2Name",
+                        "Value": "ABCDEFGHIJKLMNOPQRS"
+                    }
+                ]
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Command too long: 56 bytes, the device accepts at most 51"
+                ]
+            }
+        },
+        {
+            "name": "reading: setpoint and CH1 power (README 6.2)",
+            "input": {
+                "fPort": 100,
+                "Type": "Reading",
+                "Reading": [
+                    "heatingSetpoint",
+                    "channel1OutputPower"
+                ]
+            },
+            "expected": {
+                "fPort": 100,
+                "bytes": "FFCC00010103"
+            }
+        },
+        {
+            "name": "reading: default fPort is 100",
+            "input": {
+                "Type": "Reading",
+                "Reading": [
+                    "joinStatus"
+                ]
+            },
+            "expected": {
+                "fPort": 100,
+                "bytes": "FFCCFF96"
+            }
+        },
+        {
+            "name": "reading: write-only register rejected",
+            "input": {
+                "fPort": 100,
+                "Type": "Reading",
+                "Reading": [
+                    "rebootDevice"
+                ]
+            },
+            "expected": {
+                "fPort": 100,
+                "bytes": "",
+                "errors": [
+                    "Register not readable: please check rebootDevice in the command"
+                ]
+            }
+        },
+        {
+            "name": "reading: more than 10 registers rejected",
+            "input": {
+                "fPort": 100,
+                "Type": "Reading",
+                "Reading": [
+                    "heatingSetpoint",
+                    "heatingSetpointMax",
+                    "coolingSetpoint",
+                    "coolingSetpointMin",
+                    "flowTemperatureMin",
+                    "flowTemperatureMax",
+                    "systemOperatingMode",
+                    "mainCurrent",
+                    "mainVoltage",
+                    "mainPower",
+                    "joinStatus"
+                ]
+            },
+            "expected": {
+                "fPort": 100,
+                "bytes": "",
+                "errors": [
+                    "Invalid number of registers: please check Reading in the command"
+                ]
+            }
+        },
+        {
+            "name": "periodic: 15 min on fPort 3 (README 6.3)",
+            "input": {
+                "fPort": 3,
+                "Type": "Periodic",
+                "Periodic": {
+                    "UplinkInterval": 15,
+                    "Mode": 0,
+                    "Status": 1,
+                    "Registers": [
+                        "heatingSetpoint",
+                        "channel1OutputPower",
+                        "internalCircuitHumidity"
+                    ]
+                }
+            },
+            "expected": {
+                "fPort": 3,
+                "bytes": "FF14000FFF1500FF1601FF170600010103FF7B"
+            }
+        },
+        {
+            "name": "periodic: stop fPort 3",
+            "input": {
+                "fPort": 3,
+                "Type": "Periodic",
+                "Periodic": {
+                    "Status": 0
+                }
+            },
+            "expected": {
+                "fPort": 3,
+                "bytes": "FF1600"
+            }
+        },
+        {
+            "name": "periodic: interval 0 rejected",
+            "input": {
+                "fPort": 3,
+                "Type": "Periodic",
+                "Periodic": {
+                    "UplinkInterval": 0
+                }
+            },
+            "expected": {
+                "fPort": 3,
+                "bytes": "",
+                "errors": [
+                    "Invalid data in the command: please check UplinkInterval in the command"
+                ]
+            }
+        },
+        {
+            "name": "periodic: fPort 11 rejected",
+            "input": {
+                "fPort": 11,
+                "Type": "Periodic",
+                "Periodic": {
+                    "Status": 1
+                }
+            },
+            "expected": {
+                "fPort": 11,
+                "bytes": "",
+                "errors": [
+                    "Invalid fPort in the command"
+                ]
+            }
+        },
+        {
+            "name": "periodic: write-only register rejected",
+            "input": {
+                "fPort": 1,
+                "Type": "Periodic",
+                "Periodic": {
+                    "Registers": [
+                        "restartLoRaWAN"
+                    ]
+                }
+            },
+            "expected": {
+                "fPort": 1,
+                "bytes": "",
+                "errors": [
+                    "Register not readable: please check restartLoRaWAN in the command"
+                ]
+            }
+        },
+        {
+            "name": "command without Type rejected",
+            "input": {
+                "fPort": 50,
+                "Config": []
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid command: please add Type to the command"
+                ]
+            }
+        },
+        {
+            "name": "unknown command Type rejected",
+            "input": {
+                "fPort": 50,
+                "Type": "Write"
+            },
+            "expected": {
+                "fPort": 50,
+                "bytes": "",
+                "errors": [
+                    "Invalid command: please check Write in the command"
+                ]
+            }
+        }
+    ]
+}
