@@ -8,6 +8,7 @@ File | Content
 ---|---
 [IQ-RCM.js](IQ-RCM.js) | Codec, version 1.1.0
 [IQ-RCM.txt](IQ-RCM.txt) | Downlink examples
+[IQ-RCM.examples.json](IQ-RCM.examples.json) | Payload examples: uplinks with their decoded output, downlinks with their bytes
 `firmware/` | Signed firmware images for over-the-air updates
 
 ## Codec
@@ -40,7 +41,9 @@ fPort | `Type` | Content
 50 | `Config` | Register writes (configuration and commands)
 100 | `Reading` | Register reads, answered on fPort 100
 
-[IQ-RCM.txt](IQ-RCM.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
+[IQ-RCM.txt](IQ-RCM.txt) lists ready to use commands: the JSON object to pass to the encoder, with notes on the parameters.
+
+[IQ-RCM.examples.json](IQ-RCM.examples.json) lists payload examples checked against the codec: each uplink (`payload`, also as `payloadHex` without spaces, ready to paste) with its decoded output, and each downlink command with the bytes it encodes to.
 
 ## Firmware OTA package
 
@@ -58,6 +61,6 @@ firmware/
 - Check the images before sending them: `sha256sum -c SHA256SUMS` in the version folder.
 - Use the codec of the same version as the firmware: after an update, update the codec in the network server too.
 
-Firmware | Codec | Image
----|---|---
-v1.1.0 | 1.1.0 | Not published yet
+Firmware | Codec | Image | Changes
+---|---|---|---
+v1.1.0 | 1.1.0 | Not published yet | -

@@ -8,6 +8,7 @@ File | Content
 ---|---
 [IQ-CMD.js](IQ-CMD.js) | Codec, version 1.0.0
 [IQ-CMD.txt](IQ-CMD.txt) | Downlink examples
+[IQ-CMD.examples.json](IQ-CMD.examples.json) | Payload examples: uplinks with their decoded output, downlinks with their bytes
 `firmware/` | Signed firmware images for over-the-air updates
 
 ## Codec
@@ -40,7 +41,9 @@ fPort | `Type` | Content
 50 | `Config` | Register writes (configuration and commands)
 100 | `Reading` | Register reads, answered on fPort 100
 
-[IQ-CMD.txt](IQ-CMD.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
+[IQ-CMD.txt](IQ-CMD.txt) lists ready to use commands: the JSON object to pass to the encoder, with notes on the parameters.
+
+[IQ-CMD.examples.json](IQ-CMD.examples.json) lists payload examples checked against the codec: each uplink (`payload`, also as `payloadHex` without spaces, ready to paste) with its decoded output, and each downlink command with the bytes it encodes to.
 
 ## Firmware OTA package
 
@@ -58,6 +61,6 @@ firmware/
 - Check the images before sending them: `sha256sum -c SHA256SUMS` in the version folder.
 - Use the codec of the same version as the firmware: after an update, update the codec in the network server too.
 
-Firmware | Codec | Image
----|---|---
-v1.0.0 | 1.0.0 | Not published yet
+Firmware | Codec | Image | Changes
+---|---|---|---
+v1.0.0 | 1.0.0 | Not published yet | -

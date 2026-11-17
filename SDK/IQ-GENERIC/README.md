@@ -8,6 +8,7 @@ File | Content
 ---|---
 [IQ-GENERIC.js](IQ-GENERIC.js) | Codec, version 1.0.0
 [IQ-GENERIC.txt](IQ-GENERIC.txt) | Downlink examples
+[IQ-GENERIC.examples.json](IQ-GENERIC.examples.json) | Payload examples: uplinks with their decoded output, downlinks with their bytes
 
 ## Codec
 
@@ -39,7 +40,9 @@ fPort | `Type` | Content
 50 | `Config` | Register writes (configuration and commands)
 100 | `Reading` | Register reads, answered on fPort 100
 
-[IQ-GENERIC.txt](IQ-GENERIC.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
+[IQ-GENERIC.txt](IQ-GENERIC.txt) lists ready to use commands: the JSON object to pass to the encoder, with notes on the parameters.
+
+[IQ-GENERIC.examples.json](IQ-GENERIC.examples.json) lists payload examples checked against the codec: each uplink (`payload`, also as `payloadHex` without spaces, ready to paste) with its decoded output, and each downlink command with the bytes it encodes to.
 
 ## Firmware
 
