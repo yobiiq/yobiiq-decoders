@@ -6,13 +6,14 @@ Codec for the DSMR reader with LoRaWAN, connected to the P1 port of a smart elec
 
 File | Content
 ---|---
-[IQ-DSMR.js](IQ-DSMR.js) | Codec, version 1.0.0
+[IQ-DSMR.js](IQ-DSMR.js) | Codec, version 1.1.0
 [IQ-DSMR.txt](IQ-DSMR.txt) | Downlink examples
+[IQ-DSMR.examples.json](IQ-DSMR.examples.json) | Payload examples: uplinks with their decoded output, downlinks with their bytes
 `firmware/` | Signed firmware images for over-the-air updates
 
 ## Codec
 
-- Version **1.0.0**, written for the DSMR firmware **v1.0.0**. The codec version follows the firmware version.
+- Version **1.1.0**, written for the DSMR firmware **v1.1.0**. The codec version follows the firmware version.
 - Entry points: `decodeUplink` and `encodeDownlink` (LoRa Alliance TS013-1.0.0) for The Things Stack, ChirpStack v4, LORIOT, ThingPark; `Decode` and `Encode` for ChirpStack v3.
 - Written in ES3 syntax without ES5+ library calls, so it runs on every network server engine, including the ChirpStack v3 one.
 - Every decoded uplink also carries the codec information: `codecVersion`, `genericModel`, `manufacturer` (and `productCode` where the product has one).
@@ -40,7 +41,9 @@ fPort | `Type` | Content
 50 | `Config` | Register writes (configuration and commands)
 100 | `Reading` | Register reads, answered on fPort 100
 
-[IQ-DSMR.txt](IQ-DSMR.txt) lists ready to use examples: the JSON object to pass to the encoder and the bytes it produces.
+[IQ-DSMR.txt](IQ-DSMR.txt) lists ready to use commands: the JSON object to pass to the encoder, with notes on the parameters.
+
+[IQ-DSMR.examples.json](IQ-DSMR.examples.json) lists payload examples checked against the codec: each uplink (`payload`, also as `payloadHex` without spaces, ready to paste) with its decoded output, and each downlink command with the bytes it encodes to.
 
 ## Firmware OTA package
 
@@ -58,6 +61,7 @@ firmware/
 - Check the images before sending them: `sha256sum -c SHA256SUMS` in the version folder.
 - Use the codec of the same version as the firmware: after an update, update the codec in the network server too.
 
-Firmware | Codec | Image
----|---|---
-v1.0.0 | 1.0.0 | Not published yet
+Firmware | Codec | Image | Changes
+---|---|---|---
+v1.1.0 | 1.1.0 | Not published yet | Device status LED, no payload change
+v1.0.0 | 1.0.0 | Not published yet | -

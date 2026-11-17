@@ -1,0 +1,2466 @@
+{
+  "codec": "IQ-DSMR.js",
+  "codecVersion": "1.1.0",
+  "uplinkCommon": {
+    "codecVersion": "1.1.0",
+    "genericModel": "IQ DSMR",
+    "manufacturer": "YOBIIQ B.V."
+  },
+  "uplinks": [
+    {
+      "name": "join uplink (fPort 50)",
+      "fPort": 50,
+      "payload": "FF6A 0100 FF69 0102 FF68 00BC614E FF9F 02 FF6B 01 FF6C 00 FF67 0444534D52",
+      "payloadHex": "FF6A0100FF690102FF6800BC614EFF9F02FF6B01FF6C00FF670444534D52",
+      "expected": {
+        "data": {
+          "hardwareVersion": "v1.0",
+          "firmwareVersion": "v1.2",
+          "deviceSerialNumber": "00BC614E",
+          "deviceClass": "CLASS_C",
+          "externalPowerStatus": "MAINS_POWER",
+          "batteryVoltage": 0,
+          "deviceModel": "DSMR"
+        }
+      }
+    },
+    {
+      "name": "read response: two digit minor versions",
+      "fPort": 100,
+      "payload": "FF69 010A FF6A 020F",
+      "payloadHex": "FF69010AFF6A020F",
+      "expected": {
+        "data": {
+          "firmwareVersion": "v1.10",
+          "hardwareVersion": "v2.15"
+        }
+      }
+    },
+    {
+      "name": "read response: device manufacturer is kept",
+      "fPort": 100,
+      "payload": "FF65 06594F42494951 FF66 0441434D45",
+      "payloadHex": "FF6506594F42494951FF660441434D45",
+      "expected": {
+        "data": {
+          "manufacturer": "YOBIIQ",
+          "originalEquipmentManufacturer": "ACME"
+        }
+      }
+    },
+    {
+      "name": "read response: LoRaWAN settings",
+      "fPort": 100,
+      "payload": "FF9F 02 FFA0 01 FFA1 05 FFA3 02 FFA4 0A FFA5 05A0 FFA6 01 FFA7 00 FF96 01 FF9D 32 FF9E 01",
+      "payloadHex": "FF9F02FFA001FFA105FFA302FFA40AFFA505A0FFA601FFA700FF9601FF9D32FF9E01",
+      "expected": {
+        "data": {
+          "deviceClass": "CLASS_C",
+          "adr": "ENABLED",
+          "sf": "SF7BW125",
+          "radioMode": "LORAWAN_AND_IQ_D2D",
+          "numberOfJoinAttempts": 10,
+          "linkCheckTimeframe": 1440,
+          "dataRetransmission": "ENABLED",
+          "lorawanWatchdogAlarm": "NORMAL",
+          "joinStatus": "ONLINE",
+          "applicationPort": 50,
+          "joinType": "OTAA"
+        }
+      }
+    },
+    {
+      "name": "read response: ADR profile and SF12",
+      "fPort": 100,
+      "payload": "FFA2 01 FFA1 00",
+      "payloadHex": "FFA201FFA100",
+      "expected": {
+        "data": {
+          "adrProfile": "MOBILE_LONG_RANGE",
+          "sf": "SF12BW125"
+        }
+      }
+    },
+    {
+      "name": "read response: radio information",
+      "fPort": 100,
+      "payload": "FF97 064C5231313130 FF98 01 FF99 010004",
+      "payloadHex": "FF97064C5231313130FF9801FF99010004",
+      "expected": {
+        "data": {
+          "radioModule": "LR1110",
+          "lorawanRegion": "EU868",
+          "lorawanVersion": "v1.0.4"
+        }
+      }
+    },
+    {
+      "name": "read response: labels and empty string",
+      "fPort": 100,
+      "payload": "FF32 0A4275696C64696E672041 FF33 07526F6F6D203132 FF34 00",
+      "payloadHex": "FF320A4275696C64696E672041FF3307526F6F6D203132FF3400",
+      "expected": {
+        "data": {
+          "buildingName": "Building A",
+          "buildingRoom": "Room 12",
+          "deviceName": ""
+        }
+      }
+    },
+    {
+      "name": "read response: sensors and battery",
+      "fPort": 100,
+      "payload": "FF7A FF38 FF7B 37 FF82 0992 FF83 28 FF78 00 FF79 00000003 FF6B 00 FF6C 24 FF6D 64",
+      "payloadHex": "FF7AFF38FF7B37FF820992FF8328FF7800FF7900000003FF6B00FF6C24FF6D64",
+      "expected": {
+        "data": {
+          "internalCircuitTemperature": -2,
+          "internalCircuitHumidity": 55,
+          "ambientTemperature": 24.5,
+          "ambientHumidity": 40,
+          "internalCircuitTemperatureAlarm": "NORMAL",
+          "internalCircuitTemperatureNumberOfAlarms": 3,
+          "externalPowerStatus": "BATTERY_POWER",
+          "batteryVoltage": 3.6,
+          "batteryPercentage": 100
+        }
+      }
+    },
+    {
+      "name": "read response: special mode and unknown enum values",
+      "fPort": 100,
+      "payload": "FF64 01 FF98 0E FF9E 02",
+      "payloadHex": "FF6401FF980EFF9E02",
+      "expected": {
+        "data": {
+          "deviceStatus": "SPECIAL_MODE",
+          "lorawanRegion": "UNKNOWN (14)",
+          "joinType": "UNKNOWN (2)"
+        }
+      }
+    },
+    {
+      "name": "periodic: generic sensors (fPort 1)",
+      "fPort": 1,
+      "payload": "FF01 6955B900 FF7A 0929 FF7B 30 FF82 FBE6",
+      "payloadHex": "FF016955B900FF7A0929FF7B30FF82FBE6",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1767225600,
+          "internalCircuitTemperature": 23.45,
+          "internalCircuitHumidity": 48,
+          "ambientTemperature": -10.5
+        }
+      }
+    },
+    {
+      "name": "unknown register stops decoding",
+      "fPort": 100,
+      "payload": "FF6A 0100 1234 00",
+      "payloadHex": "FF6A0100123400",
+      "expected": {
+        "data": {
+          "hardwareVersion": "v1.0",
+          "error": "Unknown register 0x1234 at index 4"
+        },
+        "errors": [
+          "Unknown register 0x1234 at index 4"
+        ]
+      }
+    },
+    {
+      "name": "read response: serial number reads as 8 hexadecimal digits, leading zeros kept",
+      "fPort": 100,
+      "payload": "FF68 00007563",
+      "payloadHex": "FF6800007563",
+      "expected": {
+        "data": {
+          "deviceSerialNumber": "00007563"
+        }
+      }
+    },
+    {
+      "name": "read response: serial number with the top bit set reads as unsigned hexadecimal",
+      "fPort": 100,
+      "payload": "FF68 956600E6",
+      "payloadHex": "FF68956600E6",
+      "expected": {
+        "data": {
+          "deviceSerialNumber": "956600E6"
+        }
+      }
+    },
+    {
+      "name": "truncated value is an error",
+      "fPort": 100,
+      "payload": "FF68 0001",
+      "payloadHex": "FF680001",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0xFF68 at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0xFF68 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "truncated string is an error",
+      "fPort": 100,
+      "payload": "FF34 05 4142",
+      "payloadHex": "FF34054142",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0xFF34 at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0xFF34 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "truncated address is an error",
+      "fPort": 100,
+      "payload": "FF6A 0100 12",
+      "payloadHex": "FF6A010012",
+      "expected": {
+        "data": {
+          "hardwareVersion": "v1.0",
+          "error": "Incomplete register address at index 4"
+        },
+        "errors": [
+          "Incomplete register address at index 4"
+        ]
+      }
+    },
+    {
+      "name": "status byte: command succeeded (fPort 50)",
+      "fPort": 50,
+      "payload": "00",
+      "payloadHex": "00",
+      "expected": {
+        "data": {
+          "info": "DOWNLINK COMMAND SUCCEEDED"
+        }
+      }
+    },
+    {
+      "name": "status byte: command failed (fPort 100)",
+      "fPort": 100,
+      "payload": "01",
+      "payloadHex": "01",
+      "expected": {
+        "data": {
+          "warning": "DOWNLINK COMMAND FAILED"
+        },
+        "warnings": [
+          "DOWNLINK COMMAND FAILED"
+        ]
+      }
+    },
+    {
+      "name": "status byte: uplink configuration accepted (fPort 3)",
+      "fPort": 3,
+      "payload": "00",
+      "payloadHex": "00",
+      "expected": {
+        "data": {
+          "info": "DOWNLINK COMMAND SUCCEEDED"
+        }
+      }
+    },
+    {
+      "name": "MAC commands (fPort 0)",
+      "fPort": 0,
+      "payload": "0302",
+      "payloadHex": "0302",
+      "expected": {
+        "data": {
+          "mac": "MAC COMMAND RECEIVED",
+          "fPort": 0
+        }
+      }
+    },
+    {
+      "name": "FUOTA fragment (fPort 201)",
+      "fPort": 201,
+      "payload": "08 0001 AABBCCDD",
+      "payloadHex": "080001AABBCCDD",
+      "expected": {
+        "data": {
+          "info": "FUOTA DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "FMP: device version (fPort 203)",
+      "fPort": 203,
+      "payload": "01 03000201 00000001",
+      "payloadHex": "010300020100000001",
+      "expected": {
+        "data": {
+          "fmpDevVersionAns": {
+            "firmware": {
+              "major": 1,
+              "minor": 2,
+              "revision": 3,
+              "version": "v1.2.3"
+            },
+            "hardware": {
+              "major": 1,
+              "minor": 0,
+              "revision": 0,
+              "version": "v1.0.0"
+            }
+          },
+          "info": "FIRMWARE MANAGEMENT DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "FMP: upgrade image valid (fPort 203)",
+      "fPort": 203,
+      "payload": "04 03 03000201",
+      "payloadHex": "040303000201",
+      "expected": {
+        "data": {
+          "fmpDevUpgradeImageAns": {
+            "major": 1,
+            "minor": 2,
+            "revision": 3,
+            "version": "v1.2.3",
+            "status": "FIRMWARE_UPGRADE_IMAGE_VALID"
+          },
+          "info": "FIRMWARE MANAGEMENT DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "FMP: upgrade image invalid (fPort 203)",
+      "fPort": 203,
+      "payload": "04 01",
+      "payloadHex": "0401",
+      "expected": {
+        "data": {
+          "fmpDevUpgradeImageAns": {
+            "status": "FIRMWARE_UPGRADE_IMAGE_INVALID"
+          },
+          "info": "FIRMWARE MANAGEMENT DATA RECEIVED"
+        }
+      }
+    },
+    {
+      "name": "unsupported fPort",
+      "fPort": 150,
+      "payload": "0102",
+      "payloadHex": "0102",
+      "expected": {
+        "data": {
+          "fPort": 150,
+          "error": "Incorrect fPort"
+        },
+        "errors": [
+          "Incorrect fPort"
+        ]
+      }
+    },
+    {
+      "name": "max demand fPort 20 is not used",
+      "fPort": 20,
+      "payload": "FF01 6955B900 FF7A 0064",
+      "payloadHex": "FF016955B900FF7A0064",
+      "expected": {
+        "data": {
+          "fPort": 20,
+          "error": "Incorrect fPort"
+        },
+        "errors": [
+          "Incorrect fPort"
+        ]
+      }
+    },
+    {
+      "name": "periodic: factory energy uplink (fPort 1)",
+      "fPort": 1,
+      "payload": "FF01 6AD5CE00 0111 6AD5CDF9 0113 00BC614E 0116 0023CACE 0114 005B8D80 0115 0060D3CE 0117 000F4240 0118 0014888E",
+      "payloadHex": "FF016AD5CE0001116AD5CDF9011300BC614E01160023CACE0114005B8D8001150060D3CE0117000F424001180014888E",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1792396800,
+          "telegramTimestamp": 1792396793,
+          "electricityDeliveredToClient": 12345678,
+          "electricityDeliveredByClient": 2345678,
+          "electricityDeliveredToClientT1": 6000000,
+          "electricityDeliveredToClientT2": 6345678,
+          "electricityDeliveredByClientT1": 1000000,
+          "electricityDeliveredByClientT2": 1345678
+        }
+      }
+    },
+    {
+      "name": "periodic: factory power uplink (fPort 2)",
+      "fPort": 2,
+      "payload": "FF01 6AD5CE00 011A 000004E2 011B 00000000 0125 08FD 0126 08FA 0127 090A 0128 00EB 0129 0007 012A 04E2",
+      "payloadHex": "FF016AD5CE00011A000004E2011B00000000012508FD012608FA0127090A012800EB01290007012A04E2",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1792396800,
+          "electricityPowerDelivered": 1250,
+          "electricityPowerReceived": 0,
+          "voltageL1": 230.1,
+          "voltageL2": 229.8,
+          "voltageL3": 231.4,
+          "currentL1": 2.35,
+          "currentL2": 0.07,
+          "currentL3": 12.5
+        }
+      }
+    },
+    {
+      "name": "periodic: a value the telegram did not report is left out (fPort 2)",
+      "fPort": 2,
+      "payload": "FF01 6AD5CE00 011A 000001AE 0125 08FC",
+      "payloadHex": "FF016AD5CE00011A000001AE012508FC",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1792396800,
+          "electricityPowerDelivered": 430,
+          "voltageL1": 230
+        }
+      }
+    },
+    {
+      "name": "periodic: saturated current and power above 2^31 stay positive (fPort 3)",
+      "fPort": 3,
+      "payload": "FF01 6AD5CE00 0128 FFFF 011A FFFFFFFF 012B 80000000",
+      "payloadHex": "FF016AD5CE000128FFFF011AFFFFFFFF012B80000000",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1792396800,
+          "currentL1": 655.35,
+          "electricityPowerDelivered": 4294967295,
+          "activePowerDeliveredL1": 2147483648
+        }
+      }
+    },
+    {
+      "name": "read response: P1 port settings and state",
+      "fPort": 100,
+      "payload": "0101 01 0103 01 0104 00015180 0105 01 0106 000F 0107 00 0108 1049536B355C324D543338322D31303030 0109 00000003 01DE 01",
+      "payloadHex": "0101010103010104000151800105010106000F01070001081049536B355C324D543338322D3130303001090000000301DE01",
+      "expected": {
+        "data": {
+          "dsmrProfile": "LUX",
+          "telegramStatus": "VALID",
+          "telegramCount": 86400,
+          "serialWatchdogFunction": "ENABLED",
+          "serialWatchdogTimeout": 15,
+          "serialWatchdogAlarm": "NORMAL",
+          "meterIdentification": "ISk5\\2MT382-1000",
+          "telegramErrorCount": 3,
+          "decryptionFunction": "ENABLED"
+        }
+      }
+    },
+    {
+      "name": "read response: NL profile, watchdog disabled and alarm",
+      "fPort": 100,
+      "payload": "0101 00 0105 00 0106 05A0 0107 01 01DE 00",
+      "payloadHex": "010100010500010605A001070101DE00",
+      "expected": {
+        "data": {
+          "dsmrProfile": "NL",
+          "serialWatchdogFunction": "DISABLED",
+          "serialWatchdogTimeout": 1440,
+          "serialWatchdogAlarm": "ALARM",
+          "decryptionFunction": "DISABLED"
+        }
+      }
+    },
+    {
+      "name": "read response: the last value of a repeated register wins",
+      "fPort": 100,
+      "payload": "0103 00 0103 02",
+      "payloadHex": "010300010302",
+      "expected": {
+        "data": {
+          "telegramStatus": "CRC_ERROR"
+        }
+      }
+    },
+    {
+      "name": "read response: frame error",
+      "fPort": 100,
+      "payload": "0103 03",
+      "payloadHex": "010303",
+      "expected": {
+        "data": {
+          "telegramStatus": "FRAME_ERROR"
+        }
+      }
+    },
+    {
+      "name": "read response: decryption error",
+      "fPort": 100,
+      "payload": "0103 04",
+      "payloadHex": "010304",
+      "expected": {
+        "data": {
+          "telegramStatus": "DECRYPTION_ERROR"
+        }
+      }
+    },
+    {
+      "name": "read response: NL_LEGACY profile, frame error",
+      "fPort": 100,
+      "payload": "0101 02 0103 03",
+      "payloadHex": "010102010303",
+      "expected": {
+        "data": {
+          "dsmrProfile": "NL_LEGACY",
+          "telegramStatus": "FRAME_ERROR"
+        }
+      }
+    },
+    {
+      "name": "read response: unknown profile and status values",
+      "fPort": 100,
+      "payload": "0101 07 0103 09",
+      "payloadHex": "010107010309",
+      "expected": {
+        "data": {
+          "dsmrProfile": "UNKNOWN (7)",
+          "telegramStatus": "UNKNOWN (9)"
+        }
+      }
+    },
+    {
+      "name": "read response: telegram header values",
+      "fPort": 100,
+      "payload": "0110 32 0111 6AD5CE00 0112 114530303339303031323334353637383930 0119 02",
+      "payloadHex": "01103201116AD5CE000112114530303339303031323334353637383930011902",
+      "expected": {
+        "data": {
+          "p1Version": "v5.0",
+          "telegramTimestamp": 1792396800,
+          "equipmentIdentifier": "E0039001234567890",
+          "tariffIndicator": 2
+        }
+      }
+    },
+    {
+      "name": "read response: P1 version 4.2",
+      "fPort": 100,
+      "payload": "0110 2A",
+      "payloadHex": "01102A",
+      "expected": {
+        "data": {
+          "p1Version": "v4.2"
+        }
+      }
+    },
+    {
+      "name": "read response: power failures, sags and swells",
+      "fPort": 100,
+      "payload": "011C 00000004 011D 00000002 011F 00000001 0120 00000000 0121 00000005 0122 00000000 0123 00000007 0124 00000001",
+      "payloadHex": "011C00000004011D00000002011F00000001012000000000012100000005012200000000012300000007012400000001",
+      "expected": {
+        "data": {
+          "numberOfPowerFailures": 4,
+          "numberOfLongPowerFailures": 2,
+          "numberOfVoltageSagsL1": 1,
+          "numberOfVoltageSagsL2": 0,
+          "numberOfVoltageSagsL3": 5,
+          "numberOfVoltageSwellsL1": 0,
+          "numberOfVoltageSwellsL2": 7,
+          "numberOfVoltageSwellsL3": 1
+        }
+      }
+    },
+    {
+      "name": "read response: power failure event log with 2 events",
+      "fPort": 100,
+      "payload": "011E 02 6553F100 000000F0 684EE180 FFFFFFFF 011C 00000009",
+      "payloadHex": "011E026553F100000000F0684EE180FFFFFFFF011C00000009",
+      "expected": {
+        "data": {
+          "powerFailureEventLog": [
+            {
+              "timestamp": 1700000000,
+              "duration": 240
+            },
+            {
+              "timestamp": 1750000000,
+              "duration": 4294967295
+            }
+          ],
+          "numberOfPowerFailures": 9
+        }
+      }
+    },
+    {
+      "name": "read response: empty power failure event log",
+      "fPort": 100,
+      "payload": "011E 00 011D 00000000",
+      "payloadHex": "011E00011D00000000",
+      "expected": {
+        "data": {
+          "powerFailureEventLog": [],
+          "numberOfLongPowerFailures": 0
+        }
+      }
+    },
+    {
+      "name": "truncated power failure event log is an error",
+      "fPort": 100,
+      "payload": "011E 02 6553F100 000000F0",
+      "payloadHex": "011E026553F100000000F0",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0x011E at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0x011E at index 0"
+        ]
+      }
+    },
+    {
+      "name": "read response: active power per phase",
+      "fPort": 100,
+      "payload": "012B 00000064 012C 000000C8 012D 0000012C 012E 00000000 012F 00000037 0130 000005DC",
+      "payloadHex": "012B00000064012C000000C8012D0000012C012E00000000012F000000370130000005DC",
+      "expected": {
+        "data": {
+          "activePowerDeliveredL1": 100,
+          "activePowerDeliveredL2": 200,
+          "activePowerDeliveredL3": 300,
+          "activePowerReceivedL1": 0,
+          "activePowerReceivedL2": 55,
+          "activePowerReceivedL3": 1500
+        }
+      }
+    },
+    {
+      "name": "read response: M-Bus channel 1 gas meter",
+      "fPort": 100,
+      "payload": "0131 03 0132 114730303132333435363738393031323334 0133 6AD5CCD4 00C315E3",
+      "payloadHex": "013103013211473030313233343536373839303132333401336AD5CCD400C315E3",
+      "expected": {
+        "data": {
+          "deviceTypeOnChannel1": 3,
+          "equipmentIdentifierChannel1": "G0012345678901234",
+          "lastReadingOnChannel1": {
+            "timestamp": 1792396500,
+            "value": 12785.123
+          }
+        }
+      }
+    },
+    {
+      "name": "read response: M-Bus channels 2 to 4",
+      "fPort": 100,
+      "payload": "0134 07 0136 6AD5CE00 000003E8 0137 04 0138 025731 0139 00000000 00000000 013A 02 013B 025334 013C 6AD5CE00 FFFFFFFF",
+      "payloadHex": "01340701366AD5CE00000003E8013704013802573101390000000000000000013A02013B025334013C6AD5CE00FFFFFFFF",
+      "expected": {
+        "data": {
+          "deviceTypeOnChannel2": 7,
+          "lastReadingOnChannel2": {
+            "timestamp": 1792396800,
+            "value": 1
+          },
+          "deviceTypeOnChannel3": 4,
+          "equipmentIdentifierChannel3": "W1",
+          "lastReadingOnChannel3": {
+            "timestamp": 0,
+            "value": 0
+          },
+          "deviceTypeOnChannel4": 2,
+          "equipmentIdentifierChannel4": "S4",
+          "lastReadingOnChannel4": {
+            "timestamp": 1792396800,
+            "value": 4294967.295
+          }
+        }
+      }
+    },
+    {
+      "name": "read response: M-Bus channel 2 equipment identifier",
+      "fPort": 100,
+      "payload": "0135 03483232",
+      "payloadHex": "013503483232",
+      "expected": {
+        "data": {
+          "equipmentIdentifierChannel2": "H22"
+        }
+      }
+    },
+    {
+      "name": "truncated M-Bus reading is an error",
+      "fPort": 100,
+      "payload": "0133 6AD5CE00",
+      "payloadHex": "01336AD5CE00",
+      "expected": {
+        "data": {
+          "error": "Payload too short for register 0x0133 at index 0"
+        },
+        "errors": [
+          "Payload too short for register 0x0133 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "read response: LUX reactive energy and power",
+      "fPort": 100,
+      "payload": "0140 0001E240 0141 00000315 0142 0000019A 0143 00000000 0144 00000064 0145 00000096 0146 000000A0",
+      "payloadHex": "01400001E24001410000031501420000019A0143000000000144000000640145000000960146000000A0",
+      "expected": {
+        "data": {
+          "totalImportedReactiveEnergy": 123456,
+          "totalExportedReactiveEnergy": 789,
+          "totalImportedReactivePower": 410,
+          "totalExportedReactivePower": 0,
+          "importedReactivePowerL1": 100,
+          "importedReactivePowerL2": 150,
+          "importedReactivePowerL3": 160
+        }
+      }
+    },
+    {
+      "name": "read response: LUX limiter, breaker and fuse",
+      "fPort": 100,
+      "payload": "0147 00000001 0148 00000002 0149 00000003 014A 00004362 014B 01 014C 0FA0",
+      "payloadHex": "014700000001014800000002014900000003014A00004362014B01014C0FA0",
+      "expected": {
+        "data": {
+          "exportedReactivePowerL1": 1,
+          "exportedReactivePowerL2": 2,
+          "exportedReactivePowerL3": 3,
+          "activeThreshold": 17.25,
+          "breakerControlState": 1,
+          "fuseSupervisionThresholdL1": 40
+        }
+      }
+    },
+    {
+      "name": "read response: decryption key, read over BLE only, decodes as hexadecimal",
+      "fPort": 100,
+      "payload": "01DD 00112233445566778899AABBCCDDEEFF",
+      "payloadHex": "01DD00112233445566778899AABBCCDDEEFF",
+      "expected": {
+        "data": {
+          "decryptionKey": "00112233445566778899AABBCCDDEEFF"
+        }
+      }
+    },
+    {
+      "name": "alarm: serial watchdog raised (fPort 11)",
+      "fPort": 11,
+      "payload": "FF01 6AD5CE00 0107 01",
+      "payloadHex": "FF016AD5CE00010701",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1792396800,
+          "serialWatchdogAlarm": "ALARM"
+        }
+      }
+    },
+    {
+      "name": "alarm: serial watchdog cleared (fPort 11)",
+      "fPort": 11,
+      "payload": "FF01 6AD5CE00 0107 00",
+      "payloadHex": "FF016AD5CE00010700",
+      "expected": {
+        "data": {
+          "dataloggerTimestamp": 1792396800,
+          "serialWatchdogAlarm": "NORMAL"
+        }
+      }
+    },
+    {
+      "name": "register between the P1 settings and the telegram values is unknown",
+      "fPort": 100,
+      "payload": "0102 00",
+      "payloadHex": "010200",
+      "expected": {
+        "data": {
+          "error": "Unknown register 0x0102 at index 0"
+        },
+        "errors": [
+          "Unknown register 0x0102 at index 0"
+        ]
+      }
+    },
+    {
+      "name": "register after the M-Bus channels is unknown",
+      "fPort": 100,
+      "payload": "013D 00",
+      "payloadHex": "013D00",
+      "expected": {
+        "data": {
+          "error": "Unknown register 0x013D at index 0"
+        },
+        "errors": [
+          "Unknown register 0x013D at index 0"
+        ]
+      }
+    },
+    {
+      "name": "register after the LUX values is unknown",
+      "fPort": 100,
+      "payload": "014D 00",
+      "payloadHex": "014D00",
+      "expected": {
+        "data": {
+          "error": "Unknown register 0x014D at index 0"
+        },
+        "errors": [
+          "Unknown register 0x014D at index 0"
+        ]
+      }
+    },
+    {
+      "name": "registers of other products are unknown",
+      "fPort": 100,
+      "payload": "0101 01 0A00 01",
+      "payloadHex": "0101010A0001",
+      "expected": {
+        "data": {
+          "dsmrProfile": "LUX",
+          "error": "Unknown register 0x0A00 at index 3"
+        },
+        "errors": [
+          "Unknown register 0x0A00 at index 3"
+        ]
+      }
+    }
+  ],
+  "downlinks": [
+    {
+      "name": "config: restart LoRaWAN",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "restartLoRaWAN",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF9501"
+      }
+    },
+    {
+      "name": "config: reboot device",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "rebootDevice",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF6F01"
+      }
+    },
+    {
+      "name": "config: reboot value other than 1 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "rebootDevice",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check rebootDevice in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: default fPort is 50",
+      "input": {
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA001"
+      }
+    },
+    {
+      "name": "config: ADR off and SF9",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 0
+          },
+          {
+            "Param": "sf",
+            "Value": 3
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA000 FFA103"
+      }
+    },
+    {
+      "name": "config: enum value by label",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": "ENABLED"
+          },
+          {
+            "Param": "deviceClass",
+            "Value": "CLASS_A"
+          },
+          {
+            "Param": "radioMode",
+            "Value": "IQ_D2D"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA001 FF9F00 FFA301"
+      }
+    },
+    {
+      "name": "config: device class C",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "deviceClass",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF9F02"
+      }
+    },
+    {
+      "name": "config: ADR profile",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adrProfile",
+            "Value": "MOBILE_LOW_POWER"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA202"
+      }
+    },
+    {
+      "name": "config: radio mode and join attempts",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "radioMode",
+            "Value": 0
+          },
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 0
+          },
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 255
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA300 FFA400 FFA4FF"
+      }
+    },
+    {
+      "name": "config: building name string",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "buildingName",
+            "Value": "Office 12"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF32 094F6666696365203132"
+      }
+    },
+    {
+      "name": "config: empty device name",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "deviceName",
+            "Value": ""
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FF34 00"
+      }
+    },
+    {
+      "name": "config: link check timeframe (u16)",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "linkCheckTimeframe",
+            "Value": 1440
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "FFA5 05A0"
+      }
+    },
+    {
+      "name": "config: string longer than 15 characters rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "buildingName",
+            "Value": "A very long building"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check buildingName in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: non ASCII string rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "deviceName",
+            "Value": "Café"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check deviceName in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: value below minimum rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "linkCheckTimeframe",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check linkCheckTimeframe in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: value above the register size rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 256
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check numberOfJoinAttempts in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: fractional value rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": 1.5
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check numberOfJoinAttempts in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: string value for a number rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "numberOfJoinAttempts",
+            "Value": "5"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check numberOfJoinAttempts in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown enum value rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check adr in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown enum label rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "sf",
+            "Value": "SF6BW125"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check sf in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: read-only register rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "applicationPort",
+            "Value": 60
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check applicationPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: LoRaWAN region is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "lorawanRegion",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check lorawanRegion in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown parameter rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "foo",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not found in the device registers: please check foo in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: Param without Value rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add Param and Value to each object in the Config array"
+        ]
+      }
+    },
+    {
+      "name": "config: Config must be an array",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": {
+          "Param": "adr",
+          "Value": 1
+        }
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Config in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: wrong fPort rejected",
+      "input": {
+        "fPort": 3,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 3,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: more than 10 parameters rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Config in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: command over 64 bytes rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "buildingName",
+            "Value": "ABCDEFGHIJKLMNO"
+          },
+          {
+            "Param": "buildingRoom",
+            "Value": "ABCDEFGHIJKLMNO"
+          },
+          {
+            "Param": "deviceName",
+            "Value": "ABCDEFGHIJKLMNO"
+          },
+          {
+            "Param": "adr",
+            "Value": 1
+          },
+          {
+            "Param": "sf",
+            "Value": 5
+          },
+          {
+            "Param": "deviceClass",
+            "Value": 0
+          },
+          {
+            "Param": "linkCheckTimeframe",
+            "Value": 60
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Command too long: 67 bytes, the device accepts at most 64"
+        ]
+      }
+    },
+    {
+      "name": "command without Type rejected",
+      "input": {
+        "fPort": 50,
+        "Config": [
+          {
+            "Param": "adr",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add Type to the command"
+        ]
+      }
+    },
+    {
+      "name": "unknown command Type rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Foo"
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please check Foo in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: LoRaWAN settings",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "adr",
+          "sf",
+          "linkCheckTimeframe"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC FFA0 FFA1 FFA5"
+      }
+    },
+    {
+      "name": "reading: default fPort is 100",
+      "input": {
+        "Type": "Reading",
+        "Reading": [
+          "firmwareVersion"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC FF69"
+      }
+    },
+    {
+      "name": "reading: ADR profile",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "adrProfile"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC FFA2"
+      }
+    },
+    {
+      "name": "reading: write-only register rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "rebootDevice"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check rebootDevice in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: uplink header is not a register",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "dataloggerTimestamp"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check dataloggerTimestamp in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: wrong fPort rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Reading",
+        "Reading": [
+          "adr"
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: more than 10 registers rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr",
+          "adr"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Reading in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: empty list rejected",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": []
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Reading in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: 15 min unconfirmed uplink on fPort 2",
+      "input": {
+        "fPort": 2,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 15,
+          "Mode": 0,
+          "Status": 1,
+          "Registers": [
+            "electricityPowerDelivered",
+            "electricityPowerReceived",
+            "voltageL1",
+            "voltageL2",
+            "voltageL3",
+            "currentL1",
+            "currentL2",
+            "currentL3"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 2,
+        "bytes": "FF14000F FF1500 FF1601 FF1710 011A 011B 0125 0126 0127 0128 0129 012A"
+      }
+    },
+    {
+      "name": "periodic: interval only",
+      "input": {
+        "fPort": 3,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 60
+        }
+      },
+      "expected": {
+        "fPort": 3,
+        "bytes": "FF14003C"
+      }
+    },
+    {
+      "name": "periodic: confirmed and disabled",
+      "input": {
+        "fPort": 10,
+        "Type": "Periodic",
+        "Periodic": {
+          "Mode": 1,
+          "Status": 0
+        }
+      },
+      "expected": {
+        "fPort": 10,
+        "bytes": "FF1501 FF1600"
+      }
+    },
+    {
+      "name": "periodic: maximum interval",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 65535
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "FF14FFFF"
+      }
+    },
+    {
+      "name": "periodic: zero interval rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 0,
+          "Mode": 0,
+          "Status": 1
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check UplinkInterval in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: interval above 65535 rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 65536
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check UplinkInterval in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: invalid mode rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Mode": 2
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Mode in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: invalid status rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Status": "1"
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check Status in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: more than 10 registers rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Registers": [
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1",
+            "voltageL1"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid number of registers: please check Registers in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: write-only register rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {
+          "Registers": [
+            "restartLoRaWAN"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check restartLoRaWAN in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: empty configuration rejected",
+      "input": {
+        "fPort": 1,
+        "Type": "Periodic",
+        "Periodic": {}
+      },
+      "expected": {
+        "fPort": 1,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please add UplinkInterval, Mode, Status or Registers"
+        ]
+      }
+    },
+    {
+      "name": "periodic: fPort outside 1-10 rejected",
+      "input": {
+        "fPort": 11,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 15
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid fPort in the command"
+        ]
+      }
+    },
+    {
+      "name": "max demand command is not supported",
+      "input": {
+        "fPort": 11,
+        "Type": "MaxDemand",
+        "MaxDemand": {
+          "Register": "adr",
+          "Mode": 0,
+          "Status": 1,
+          "DataloggerInterval": 5,
+          "UplinkInterval": 30
+        }
+      },
+      "expected": {
+        "fPort": 11,
+        "bytes": "",
+        "errors": [
+          "Invalid command: please check MaxDemand in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: LUX profile with the decryption key and function",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "dsmrProfile",
+            "Value": "LUX"
+          },
+          {
+            "Param": "decryptionKey",
+            "Value": "00112233445566778899aabbccddeeff"
+          },
+          {
+            "Param": "decryptionFunction",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "0101 01 01DD 00112233445566778899AABBCCDDEEFF 01DE 01"
+      }
+    },
+    {
+      "name": "config: NL_LEGACY profile by label and by value",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "dsmrProfile",
+            "Value": "NL_LEGACY"
+          },
+          {
+            "Param": "dsmrProfile",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "0101 02 0101 02"
+      }
+    },
+    {
+      "name": "config: decryption key in upper case",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "decryptionKey",
+            "Value": "AABBCCDDEEFF00112233445566778899"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "01DD AABBCCDDEEFF00112233445566778899"
+      }
+    },
+    {
+      "name": "config: NL profile by value, decryption disabled by label",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "dsmrProfile",
+            "Value": 0
+          },
+          {
+            "Param": "decryptionFunction",
+            "Value": "DISABLED"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "0101 00 01DE 00"
+      }
+    },
+    {
+      "name": "config: serial watchdog enabled with a 60 minute timeout",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialWatchdogFunction",
+            "Value": "ENABLED"
+          },
+          {
+            "Param": "serialWatchdogTimeout",
+            "Value": 60
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "0105 01 0106 003C"
+      }
+    },
+    {
+      "name": "config: serial watchdog timeout limits",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialWatchdogTimeout",
+            "Value": 1
+          },
+          {
+            "Param": "serialWatchdogTimeout",
+            "Value": 1440
+          },
+          {
+            "Param": "serialWatchdogFunction",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "0106 0001 0106 05A0 0105 00"
+      }
+    },
+    {
+      "name": "config: serial watchdog timeout 0 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialWatchdogTimeout",
+            "Value": 0
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialWatchdogTimeout in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: serial watchdog timeout above 1440 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialWatchdogTimeout",
+            "Value": 1441
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check serialWatchdogTimeout in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown profile rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "dsmrProfile",
+            "Value": 3
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check dsmrProfile in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: unknown profile label rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "dsmrProfile",
+            "Value": "BE"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check dsmrProfile in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: decryption function 2 rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "decryptionFunction",
+            "Value": 2
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check decryptionFunction in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: decryption key too short rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "decryptionKey",
+            "Value": "0011223344556677"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check decryptionKey in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: decryption key with a non hexadecimal digit rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "decryptionKey",
+            "Value": "00112233445566778899AABBCCDDEEFG"
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check decryptionKey in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: decryption key as a number rejected",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "decryptionKey",
+            "Value": 1234
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Invalid data in the command: please check decryptionKey in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: telegramStatus is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "telegramStatus",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check telegramStatus in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: telegramCount is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "telegramCount",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check telegramCount in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: serialWatchdogAlarm is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "serialWatchdogAlarm",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check serialWatchdogAlarm in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: meterIdentification is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "meterIdentification",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check meterIdentification in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: telegramErrorCount is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "telegramErrorCount",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check telegramErrorCount in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: voltageL1 is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "voltageL1",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check voltageL1 in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: electricityDeliveredToClient is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "electricityDeliveredToClient",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check electricityDeliveredToClient in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: powerFailureEventLog is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "powerFailureEventLog",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check powerFailureEventLog in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: lastReadingOnChannel1 is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "lastReadingOnChannel1",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check lastReadingOnChannel1 in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: breakerControlState is read-only",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "breakerControlState",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not writable: please check breakerControlState in the command"
+        ]
+      }
+    },
+    {
+      "name": "config: registers of other products are unknown",
+      "input": {
+        "fPort": 50,
+        "Type": "Config",
+        "Config": [
+          {
+            "Param": "input1VoltageThreshold",
+            "Value": 1
+          }
+        ]
+      },
+      "expected": {
+        "fPort": 50,
+        "bytes": "",
+        "errors": [
+          "Register not found in the device registers: please check input1VoltageThreshold in the command"
+        ]
+      }
+    },
+    {
+      "name": "reading: P1 port settings",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "dsmrProfile",
+          "decryptionFunction",
+          "serialWatchdogFunction",
+          "serialWatchdogTimeout",
+          "serialWatchdogAlarm",
+          "telegramStatus",
+          "telegramCount",
+          "telegramErrorCount",
+          "meterIdentification"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC 0101 01DE 0105 0106 0107 0103 0104 0109 0108"
+      }
+    },
+    {
+      "name": "reading: telegram values",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "p1Version",
+          "telegramTimestamp",
+          "equipmentIdentifier",
+          "powerFailureEventLog",
+          "lastReadingOnChannel1",
+          "lastReadingOnChannel4",
+          "totalImportedReactiveEnergy",
+          "activeThreshold",
+          "fuseSupervisionThresholdL1",
+          "firmwareVersion"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "FFCC 0110 0111 0112 011E 0133 013C 0140 014A 014C FF69"
+      }
+    },
+    {
+      "name": "reading: decryption key is write-only over LoRaWAN",
+      "input": {
+        "fPort": 100,
+        "Type": "Reading",
+        "Reading": [
+          "decryptionKey"
+        ]
+      },
+      "expected": {
+        "fPort": 100,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check decryptionKey in the command"
+        ]
+      }
+    },
+    {
+      "name": "periodic: LUX reactive values on fPort 3",
+      "input": {
+        "fPort": 3,
+        "Type": "Periodic",
+        "Periodic": {
+          "UplinkInterval": 60,
+          "Registers": [
+            "telegramTimestamp",
+            "totalImportedReactiveEnergy",
+            "totalExportedReactiveEnergy",
+            "lastReadingOnChannel1"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 3,
+        "bytes": "FF14003C FF1708 0111 0140 0141 0133"
+      }
+    },
+    {
+      "name": "periodic: decryption key cannot be reported",
+      "input": {
+        "fPort": 3,
+        "Type": "Periodic",
+        "Periodic": {
+          "Registers": [
+            "decryptionKey"
+          ]
+        }
+      },
+      "expected": {
+        "fPort": 3,
+        "bytes": "",
+        "errors": [
+          "Register not readable: please check decryptionKey in the command"
+        ]
+      }
+    }
+  ]
+}

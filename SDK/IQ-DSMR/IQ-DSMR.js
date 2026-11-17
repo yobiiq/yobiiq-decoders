@@ -13,7 +13,7 @@
  *                Written in ES3 syntax without ES5+ library calls, console or global state between calls.
  *
  * @author      Fostin Kpodar <f.kpodar@yobiiq.com>
- * @version     1.0.0
+ * @version     1.1.0
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  *
  * @release     19-10-2026
@@ -22,14 +22,14 @@
  * @product     IQ DSMR (P1 port reader of smart electricity meters, DSMR 4/5 (NL), Smarty (LUX) and
  *              DSMR 2.2/3.0 (NL_LEGACY) profiles)
  *
- * @firmware    IQ DSMR v1.0.0
+ * @firmware    IQ DSMR v1.1.0
  *
  */
 
 
 // Added to every decoded uplink, without overwriting decoded fields.
 var CODEC_INFO = {
-    codecVersion: "1.0.0",
+    codecVersion: "1.1.0",
     genericModel: "IQ DSMR",
     manufacturer: "YOBIIQ B.V."
 };
