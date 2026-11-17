@@ -17,7 +17,7 @@
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  *
  * @release     24-09-2026
- * @update      27-10-2026
+ * @update      17-11-2026
  *
  * @product     IQ CMD (CMD series analog input module, CMD-L-0D-4I: 4 inputs, 0-10 V or 4-20 mA)
  *
@@ -75,13 +75,13 @@ var SWITCH_POSITION_VALUES = {0: "UNKNOWN", 1: "VOLTAGE", 2: "CURRENT"};
  * to encode downlinks, so the two directions can never disagree on an address.
  *
  *   NAME        key in the decoded object, Param / Registers name in commands
- *   TYPE        U8 U16 U24 U32 I8 I16 I32 F32 F64 STR VER VER3 ENUM FLAGS STRUCT
+ *   TYPE        U8 U16 U24 U32 I8 I16 I32 F32 F64 STR VER VER3 ENUM FLAGS HEX STRUCT
  *   RW          what the firmware accepts over LoRaWAN: "R", "W", "RW" or "" (uplink only)
  *   RESOLUTION  decoded value = raw * RESOLUTION (and raw = value / RESOLUTION when encoding)
  *   DECIMALS    rounding of scaled and float values (default 3, F64 default 6)
  *   VALUES      ENUM labels by raw value; unknown values decode as "UNKNOWN (<raw>)"
  *   FLAGS       FLAGS bits: [{NAME: ..., BIT: n, VALUES: [label when 0, label when 1]}]
- *   SIZE        byte size of FLAGS and STRUCT registers
+ *   SIZE        byte size of FLAGS, HEX and STRUCT registers
  *   DECODE      STRUCT decoder: function (bytes, index) returning the decoded value
  *   MIN, MAX    accepted range of written values (in decoded units; ENUM: raw values); STR: MAX length
  *   ALLOWED     list of the only accepted written values (for example serial baud rates)
@@ -99,7 +99,7 @@ var REGISTERS = {
     "0xFF65": {NAME: "manufacturer", TYPE: "STR", RW: "R"},
     "0xFF66": {NAME: "originalEquipmentManufacturer", TYPE: "STR", RW: "R"},
     "0xFF67": {NAME: "deviceModel", TYPE: "STR", RW: "R"},
-    "0xFF68": {NAME: "deviceSerialNumber", TYPE: "U32", RW: "R"},
+    "0xFF68": {NAME: "deviceSerialNumber", TYPE: "HEX", RW: "R", SIZE: 4},
     "0xFF69": {NAME: "firmwareVersion", TYPE: "VER", RW: "R"},
     "0xFF6A": {NAME: "hardwareVersion", TYPE: "VER", RW: "R"},
     "0xFF6B": {NAME: "externalPowerStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "BATTERY_POWER", 1: "MAINS_POWER"}},
@@ -351,6 +351,9 @@ function decodeValue(bytes, index, reg) {
     case "FLAGS":
         value = decodeFlags(readUint(bytes, index, size), reg.FLAGS);
         break;
+    case "HEX":
+        value = readHex(bytes, index, size);
+        break;
     case "STRUCT":
         value = reg.DECODE(bytes, index);
         break;
@@ -364,7 +367,7 @@ function valueSize(bytes, index, reg) {
     if (reg.TYPE === "STR") {
         return index < bytes.length ? 1 + bytes[index] : -1;
     }
-    if (reg.TYPE === "FLAGS" || reg.TYPE === "STRUCT") {
+    if (reg.TYPE === "FLAGS" || reg.TYPE === "HEX" || reg.TYPE === "STRUCT") {
         return reg.SIZE;
     }
     return has(TYPE_SIZES, reg.TYPE) ? TYPE_SIZES[reg.TYPE] : -1;
@@ -447,6 +450,14 @@ function readString(bytes, index, length) {
     var text = "";
     for (var i = 0; i < length; i = i + 1) {
         text = text + String.fromCharCode(bytes[index + i]);
+    }
+    return text;
+}
+
+function readHex(bytes, index, size) {
+    var text = "";
+    for (var i = 0; i < size; i = i + 1) {
+        text = text + byteToHex(bytes[index + i]);
     }
     return text;
 }

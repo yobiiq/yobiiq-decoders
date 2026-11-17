@@ -17,7 +17,7 @@
         "data": {
           "hardwareVersion": "v1.0",
           "firmwareVersion": "v1.2",
-          "deviceSerialNumber": 12345678,
+          "deviceSerialNumber": "00BC614E",
           "deviceClass": "CLASS_C",
           "externalPowerStatus": "MAINS_POWER",
           "batteryVoltage": 0,
@@ -170,24 +170,24 @@
       }
     },
     {
-      "name": "read response: serial number 00030051 (decimal) reads 30051",
+      "name": "read response: serial number reads as 8 hexadecimal digits, leading zeros kept",
       "fPort": 100,
       "payload": "FF68 00007563",
       "payloadHex": "FF6800007563",
       "expected": {
         "data": {
-          "deviceSerialNumber": 30051
+          "deviceSerialNumber": "00007563"
         }
       }
     },
     {
-      "name": "read response: serial number above 0x7FFFFFFF stays positive",
+      "name": "read response: serial number with the top bit set reads as unsigned hexadecimal",
       "fPort": 100,
       "payload": "FF68 956600E6",
       "payloadHex": "FF68956600E6",
       "expected": {
         "data": {
-          "deviceSerialNumber": 2506490086
+          "deviceSerialNumber": "956600E6"
         }
       }
     },

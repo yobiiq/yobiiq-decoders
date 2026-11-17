@@ -17,7 +17,7 @@
  * @copyright   YOBIIQ B.V. | https://www.yobiiq.com
  *
  * @release     19-10-2026
- * @update      21-10-2026
+ * @update      17-11-2026
  *
  * @product     IQ DSMR (P1 port reader of smart electricity meters, DSMR 4/5 (NL), Smarty (LUX) and
  *              DSMR 2.2/3.0 (NL_LEGACY) profiles)
@@ -101,7 +101,7 @@ var REGISTERS = {
     "0xFF65": {NAME: "manufacturer", TYPE: "STR", RW: "R"},
     "0xFF66": {NAME: "originalEquipmentManufacturer", TYPE: "STR", RW: "R"},
     "0xFF67": {NAME: "deviceModel", TYPE: "STR", RW: "R"},
-    "0xFF68": {NAME: "deviceSerialNumber", TYPE: "U32", RW: "R"},
+    "0xFF68": {NAME: "deviceSerialNumber", TYPE: "HEX", RW: "R", SIZE: 4},
     "0xFF69": {NAME: "firmwareVersion", TYPE: "VER", RW: "R"},
     "0xFF6A": {NAME: "hardwareVersion", TYPE: "VER", RW: "R"},
     "0xFF6B": {NAME: "externalPowerStatus", TYPE: "ENUM", RW: "R", VALUES: {0: "BATTERY_POWER", 1: "MAINS_POWER"}},
